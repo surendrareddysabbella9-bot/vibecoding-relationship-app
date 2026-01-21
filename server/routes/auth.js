@@ -8,6 +8,17 @@ const auth = require('../middleware/auth');
 const crypto = require('crypto');
 // Email integration removed for demo mode
 
+router.post('/check-email', async (req, res) => {
+    const { email } = req.body;
+    try {
+        const user = await User.findOne({ email });
+        res.json({ exists: !!user });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
+    }
+});
+
 // @route   POST api/auth/register
 // @desc    Register user
 // @access  Public

@@ -20,6 +20,23 @@ export default function Register() {
     const onChange = (e: React.ChangeEvent<HTMLInputElement>) =>
         setFormData({ ...formData, [e.target.name]: e.target.value });
 
+    const checkEmail = async () => {
+        if (!email || !email.includes('@')) return;
+
+        try {
+            const res = await api.post('/auth/check-email', { email });
+            if (res.data.exists) {
+                setError('User already exists. Please login instead.');
+            } else {
+                if (error === 'User already exists. Please login instead.') {
+                    setError('');
+                }
+            }
+        } catch (err) {
+            console.error('Email check failed', err);
+        }
+    };
+
     const onSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -52,6 +69,11 @@ export default function Register() {
                     {error && (
                         <div className="bg-red-50/80 backdrop-blur-sm border-l-4 border-red-500 p-4 rounded">
                             <p className="text-red-700 text-sm font-medium">{error}</p>
+                            {error.includes('already exists') && (
+                                <Link href="/login" className="text-indigo-600 hover:text-indigo-800 text-sm font-bold mt-1 block">
+                                    Click here to Login &rarr;
+                                </Link>
+                            )}
                         </div>
                     )}
                     <div className="rounded-md space-y-4">
@@ -77,6 +99,7 @@ export default function Register() {
                                 placeholder="name@example.com"
                                 value={email}
                                 onChange={onChange}
+                                onBlur={checkEmail}
                             />
                         </div>
                         <div>
