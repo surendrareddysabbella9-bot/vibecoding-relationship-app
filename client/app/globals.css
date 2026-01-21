@@ -16,10 +16,24 @@
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(to bottom right,
-      rgb(var(--background-start-rgb)),
-      rgb(var(--background-end-rgb)));
+  background: linear-gradient(-45deg, #fff0f5, #e0e7ff, #f3e8ff, #ffe4e6);
+  background-size: 400% 400%;
+  animation: gradientBG 15s ease infinite;
   min-height: 100vh;
+}
+
+@keyframes gradientBG {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 @layer utilities {
@@ -74,7 +88,7 @@ body {
   transition: background-color 0.2s ease-in-out;
 }
 
-.toggle-checkbox:checked + .toggle-label {
+.toggle-checkbox:checked+.toggle-label {
   background-color: #86efac;
 }
 
@@ -103,6 +117,7 @@ body {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
