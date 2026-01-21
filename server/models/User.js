@@ -49,7 +49,12 @@ const UserSchema = new mongoose.Schema({
         default: true // true = shared, false = private
     },
     resetPasswordToken: String,
-    resetPasswordExpire: Date
+    resetPasswordExpire: Date,
+    nudge: {
+        active: { type: Boolean, default: false },
+        sender: String,
+        timestamp: Date
+    }
 });
 
 module.exports = mongoose.model('User', UserSchema);

@@ -79,4 +79,57 @@ router.get('/status', auth, async (req, res) => {
     }
 });
 
+// @route   POST api/partner/nudge
+// @desc    Send a nudge notification to partner
+// @access  Private
+router.post('/nudge', auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+
+        if (!user.partnerId) {
+            return res.status(400).json({ msg: 'No partner connected' });
+        }
+
+        const partner = await User.findById(user.partnerId);
+
+        if (!partner) {
+            return res.status(404).json({ msg: 'Partner not found' });
+        }
+
+        // Set nudge on partner
+        partner.nudge = {
+            active: true,
+            sender: user.name,
+            timestamp: Date.now()
+        };
+        await partner.save();
+
+        res.json({ msg: 'Nudge sent successfully!' });
+
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
+    }
+});
+
+// @route   POST api/partner/nudge/dismiss
+// @desc    Dismiss a nudge
+// @access  Private
+router.post('/nudge/dismiss', auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+
+        if (user.nudge) {
+            user.nudge.active = false;
+            await user.save();
+        }
+
+        res.json({ msg: 'Nudge dismissed' });
+
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
+    }
+});
+
 module.exports = router;

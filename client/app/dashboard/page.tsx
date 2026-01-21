@@ -20,6 +20,11 @@ interface User {
     onboardingData?: {
         communicationStyle: string;
     };
+    nudge?: {
+        active: boolean;
+        sender: string;
+        timestamp: string;
+    };
 }
 
 interface PartnerStatus {
@@ -85,6 +90,8 @@ export default function Dashboard() {
     const [comment, setComment] = useState('');
     const [submittingFeedback, setSubmittingFeedback] = useState(false);
     const [hasGivenFeedback, setHasGivenFeedback] = useState(false);
+    const [nudging, setNudging] = useState(false);
+    const [hasNudged, setHasNudged] = useState(false);
     const [submittingMood, setSubmittingMood] = useState(false);
 
     // Preferences
@@ -171,6 +178,41 @@ export default function Dashboard() {
         }
     };
 
+    useEffect(() => {
+        if (user?._id) {
+            fetchStats();
+
+            // Poll for nudges
+            const interval = setInterval(async () => {
+                try {
+                    const res = await api.get('/auth/user');
+                    // Only update if nudge status changed
+                    if (res.data.nudge?.active !== user.nudge?.active) { // Note: this comparison might be stale due to closure, but user is updated via setUser
+                        // Actually, inside setInterval 'user' refers to the closure value.
+                        // We should compare with the fresh response vs what we think we have? 
+                        // Or just setUser(res.data) if active is true and we haven't shown it?
+
+                        // Better approach: just check res.data.nudge.active. If true, setUser. 
+                        // The UI handles 'if already active'.
+                        // But we want to fire confetti only on transition to true.
+                        // We can rely on a ref or just fire confetti if active.
+
+                        setUser(res.data);
+                        if (res.data.nudge?.active && !user.nudge?.active) {
+                            confetti({
+                                particleCount: 100,
+                                spread: 70,
+                                origin: { y: 0.2 },
+                                colors: ['#ec4899', '#8b5cf6']
+                            });
+                        }
+                    }
+                } catch (e) { }
+            }, 5000);
+            return () => clearInterval(interval);
+        }
+    }, [user?._id, user?.nudge?.active]); // Dependency on user.nudge.active is crucial for the comparison logic
+
     const handleMoodSubmit = async (mood: string) => {
         setSubmittingMood(true);
         try {
@@ -251,13 +293,39 @@ export default function Dashboard() {
         try {
             await api.post(`/tasks/${task._id}/feedback`, { rating, comment });
             setHasGivenFeedback(true);
-            // Refresh stats and history dynamically
             fetchStats(user._id);
             fetchHistory();
         } catch (err) {
             console.error("Failed to submit feedback", err);
         }
         setSubmittingFeedback(false);
+    };
+
+    const handleNudge = async () => {
+        setNudging(true);
+        try {
+            await api.post('/partner/nudge');
+            setHasNudged(true);
+            confetti({
+                particleCount: 50,
+                spread: 60,
+                origin: { y: 0.7 },
+                colors: ['#a855f7', '#ec4899']
+            });
+        } catch (err: any) {
+            console.error("Nudge failed", err);
+            // Optional: setError(err.response?.data?.msg || 'Failed to nudge');
+        }
+        setNudging(false);
+    };
+
+    const dismissNudge = async () => {
+        try {
+            await api.post('/partner/nudge/dismiss');
+            setUser(prev => prev ? { ...prev, nudge: { ...prev.nudge!, active: false } } : null);
+        } catch (err) {
+            console.error("Dismiss failed", err);
+        }
     };
 
     // Helper to check if I have responded
@@ -309,7 +377,35 @@ export default function Dashboard() {
                         transition={{ duration: 0.5 }}
                         className="lg:col-span-2 space-y-6"
                     >
-                        {/* VIBE CHECK */}
+                        {/* NUDGE NOTIFICATION */}
+                        <AnimatePresence>
+                            {user?.nudge?.active && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -50 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -50 }}
+                                    className="fixed top-4 right-4 z-50 bg-white border-l-4 border-rose-500 shadow-2xl rounded-xl p-4 max-w-sm flex items-start gap-4"
+                                >
+                                    <div className="bg-rose-100 p-2 rounded-full text-rose-600">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-gray-900">Hey! {user.nudge.sender} is waiting 💖</h4>
+                                        <p className="text-sm text-gray-600 mt-1">They finished the daily vibe check. Your turn!</p>
+                                        <button
+                                            onClick={dismissNudge}
+                                            className="mt-3 text-xs font-bold text-rose-500 hover:text-rose-700 uppercase tracking-wider"
+                                        >
+                                            Dismiss
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
+                        {/* DASHBOARD HEADER */}
                         <div className="glass-card p-6 rounded-3xl shadow-lg border-white/50">
                             <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
                                 <span className="bg-rose-100 p-1 rounded-md text-rose-500">🎭</span>
@@ -479,6 +575,25 @@ export default function Dashboard() {
                                                         <div className="text-4xl animate-pulse">🔒</div>
                                                         <h3 className="text-xl font-bold">Response Locked</h3>
                                                         <p className="text-indigo-200">Waiting for your partner to add their vibe...</p>
+
+                                                        {!hasNudged ? (
+                                                            <button
+                                                                onClick={handleNudge}
+                                                                disabled={nudging}
+                                                                className="mt-2 bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-100 border border-indigo-500/30 px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 mx-auto"
+                                                            >
+                                                                {nudging ? (
+                                                                    <span className="animate-spin">⌛</span>
+                                                                ) : (
+                                                                    <span>👋</span>
+                                                                )}
+                                                                {nudging ? 'Sending...' : 'Nudge Partner'}
+                                                            </button>
+                                                        ) : (
+                                                            <div className="mt-2 text-indigo-300 text-sm font-medium bg-indigo-500/10 px-3 py-1 rounded-full inline-block">
+                                                                ✨ Nudge sent!
+                                                            </div>
+                                                        )}
                                                         <div className="text-sm bg-white/10 inline-block px-3 py-1 rounded-full">
                                                             You said: <span className="italic">"{myResponse.text}"</span>
                                                         </div>
