@@ -357,16 +357,19 @@ export default function Dashboard() {
                                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Share Mood</span>
                                         <button
                                             type="button"
-                                            role="switch"
-                                            aria-checked={shareMood}
                                             onClick={() => togglePrivacy(!shareMood)}
-                                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 ${shareMood ? 'bg-green-500' : 'bg-gray-300'
-                                                }`}
+                                            style={{
+                                                backgroundColor: shareMood ? '#22c55e' : '#d1d5db',
+                                                transition: 'background-color 0.2s ease-in-out'
+                                            }}
+                                            className="relative inline-flex h-7 w-12 cursor-pointer rounded-full p-0.5 focus:outline-none"
                                         >
                                             <span
-                                                aria-hidden="true"
-                                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${shareMood ? 'translate-x-5' : 'translate-x-0'
-                                                    }`}
+                                                style={{
+                                                    transform: shareMood ? 'translateX(20px)' : 'translateX(0px)',
+                                                    transition: 'transform 0.2s ease-in-out'
+                                                }}
+                                                className="inline-block h-6 w-6 rounded-full bg-white shadow-md"
                                             />
                                         </button>
                                     </div>
