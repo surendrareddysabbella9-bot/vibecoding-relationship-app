@@ -138,7 +138,7 @@ export default function Dashboard() {
         if (!task || rating === 0) return;
         setSubmittingFeedback(true);
         try {
-            await api.put(`/tasks/${task._id}/feedback`, { rating, comment });
+            await api.post(`/tasks/${task._id}/feedback`, { rating, comment });
             setHasGivenFeedback(true);
         } catch (err) {
             console.error("Failed to submit feedback", err);
