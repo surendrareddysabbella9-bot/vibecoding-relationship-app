@@ -293,7 +293,7 @@ export default function Dashboard() {
         try {
             await api.post(`/tasks/${task._id}/feedback`, { rating, comment });
             setHasGivenFeedback(true);
-            fetchStats(user._id);
+            fetchStats();
             fetchHistory();
         } catch (err) {
             console.error("Failed to submit feedback", err);
