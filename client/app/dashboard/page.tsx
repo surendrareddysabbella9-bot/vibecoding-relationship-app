@@ -1,14 +1,102 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import api from '@/lib/api';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { cn } from '@/lib/utils';
-// ... imports
 
-// ... (interfaces remain same)
+interface User {
+    _id: string;
+    name: string;
+    email: string;
+    partnerLinkCode: string;
+    partnerId?: string;
+    currentMood?: string;
+}
+
+interface Task {
+    _id: string;
+    title: string;
+    description: string;
+    category?: string;
+    status: string;
+    userRating?: number;
+    userComment?: string;
+}
+
+const MOODS = ['Happy', 'Stressed', 'Tired', 'Romantic', 'Chill'];
 
 export default function Dashboard() {
-    // ... (states remain same)
+    const router = useRouter();
+    const [user, setUser] = useState<User | null>(null);
+    const [partnerCode, setPartnerCode] = useState('');
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+    const [copySuccess, setCopySuccess] = useState('');
+    const [task, setTask] = useState<Task | null>(null);
+    const [loadingTask, setLoadingTask] = useState(false);
+    const [rating, setRating] = useState(0);
+    const [comment, setComment] = useState('');
+    const [submittingFeedback, setSubmittingFeedback] = useState(false);
+    const [hasGivenFeedback, setHasGivenFeedback] = useState(false);
+    const [submittingMood, setSubmittingMood] = useState(false);
 
-    // ... (useEffect remains same)
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            router.push('/login');
+            return;
+        }
+        fetchUser();
+    }, [router]);
+
+    const fetchUser = async () => {
+        try {
+            const res = await api.get('/auth/user');
+            setUser(res.data);
+            if (res.data.partnerId) {
+                fetchDailyTask();
+            }
+        } catch {
+            localStorage.removeItem('token');
+            router.push('/login');
+        }
+    };
+
+    const fetchDailyTask = async () => {
+        setLoadingTask(true);
+        try {
+            const res = await api.get('/tasks/today');
+            setTask(res.data);
+            if (res.data.userRating) {
+                setHasGivenFeedback(true);
+            }
+        } catch (err) {
+            console.error("Failed to fetch task", err);
+        }
+        setLoadingTask(false);
+    };
+
+    const handleMoodSubmit = async (mood: string) => {
+        setSubmittingMood(true);
+        try {
+            await api.put('/auth/mood', { mood });
+            setUser(prev => prev ? { ...prev, currentMood: mood } : null);
+        } catch (err) {
+            console.error("Failed to update mood", err);
+        }
+        setSubmittingMood(false);
+    };
+
+    const copyLink = () => {
+        if (user) {
+            navigator.clipboard.writeText(user.partnerLinkCode);
+            setCopySuccess('Copied!');
+            setTimeout(() => setCopySuccess(''), 2000);
+        }
+    };
 
     const handleConnect = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -46,7 +134,17 @@ export default function Dashboard() {
         }
     };
 
-    // ... (rest of functions)
+    const submitFeedback = async () => {
+        if (!task || rating === 0) return;
+        setSubmittingFeedback(true);
+        try {
+            await api.put(`/tasks/${task._id}/feedback`, { rating, comment });
+            setHasGivenFeedback(true);
+        } catch (err) {
+            console.error("Failed to submit feedback", err);
+        }
+        setSubmittingFeedback(false);
+    };
 
     if (!user) return (
         <div className="flex items-center justify-center min-h-screen">
