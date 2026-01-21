@@ -42,8 +42,8 @@ export default function Register() {
         setError('');
         try {
             const res = await api.post('/auth/register', formData);
-            localStorage.setItem('token', res.data.token);
-            router.push('/onboarding');
+            // Don't auto-login, force variable verification
+            router.push('/login?registered=true');
         } catch (err: any) {
             if (err.response?.data?.errors) {
                 setError(err.response.data.errors[0].msg);

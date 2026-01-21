@@ -1,7 +1,7 @@
 "use client";
 import { useState } from 'react';
 import api from '@/lib/api';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 
@@ -13,6 +13,8 @@ export default function Login() {
     const [error, setError] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const registered = searchParams.get('registered');
 
     const { email, password } = formData;
 
@@ -52,6 +54,11 @@ export default function Login() {
                     <p className="mt-2 text-center text-sm text-gray-600">to continue your journey</p>
                 </div>
                 <form className="mt-8 space-y-6" onSubmit={onSubmit}>
+                    {registered && (
+                        <div className="bg-green-50/80 backdrop-blur-sm border-l-4 border-green-500 p-4 rounded">
+                            <p className="text-green-700 text-sm font-medium">Registration successful! Please login.</p>
+                        </div>
+                    )}
                     {error && (
                         <div className="bg-red-50/80 backdrop-blur-sm border-l-4 border-red-500 p-4 rounded">
                             <p className="text-red-700 text-sm font-medium">{error}</p>
