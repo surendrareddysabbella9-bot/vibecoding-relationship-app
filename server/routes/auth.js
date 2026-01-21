@@ -139,6 +139,27 @@ router.put('/onboarding', auth, async (req, res) => {
     }
 });
 
+// @route   PUT api/auth/mood
+// @desc    Update user current mood
+// @access  Private
+router.put('/mood', auth, async (req, res) => {
+    const { mood } = req.body;
+
+    try {
+        let user = await User.findById(req.user.id);
+        if (user) {
+            user.currentMood = mood;
+            user.lastMoodUpdate = Date.now();
+            await user.save();
+            return res.json(user);
+        }
+        res.status(404).json({ msg: 'User not found' });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
+    }
+});
+
 // @route   GET api/auth/user
 // @desc    Get logged in user
 // @access  Private

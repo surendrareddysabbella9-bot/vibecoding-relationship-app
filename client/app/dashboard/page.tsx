@@ -14,6 +14,7 @@ interface User {
         loveLanguage: string;
         interests: string[];
     };
+    currentMood?: string;
 }
 
 interface Feedback {
@@ -44,8 +45,13 @@ export default function Dashboard() {
     const [comment, setComment] = useState('');
     const [submittingFeedback, setSubmittingFeedback] = useState(false);
     const [copySuccess, setCopySuccess] = useState('');
+    // Mood States
+    const [mood, setMood] = useState('');
+    const [submittingMood, setSubmittingMood] = useState(false);
 
     const router = useRouter();
+
+    const MOODS = ['Happy', 'Stressed', 'Tired', 'Romantic', 'Chill'];
 
     useEffect(() => {
         // Check for partner code in URL
@@ -76,6 +82,23 @@ export default function Dashboard() {
         };
         fetchUser();
     }, [router]);
+
+    const handleMoodSubmit = async (selectedMood: string) => {
+        setMood(selectedMood);
+        setSubmittingMood(true);
+        try {
+            await api.put('/auth/mood', { mood: selectedMood });
+            // Refresh user to start seeing partner's mood or update context
+            const userRes = await api.get('/auth/user');
+            setUser(userRes.data);
+            setSuccess(`Vibe set to ${selectedMood}!`);
+            setTimeout(() => setSuccess(''), 2000);
+        } catch (err) {
+            console.error("Failed to set mood", err);
+        } finally {
+            setSubmittingMood(false);
+        }
+    };
 
     const fetchDailyTask = async () => {
         setLoadingTask(true);
@@ -140,9 +163,32 @@ export default function Dashboard() {
 
     if (!user) return <div className="p-8">Loading...</div>;
 
+    const partnerMood = user.partnerId ? (user as any).partnerMood : null; // Ideally fetch partner object, but for MVP we might need to fetch partner details or just rely on what we have. 
+    // Wait, the user object from /auth/user doesn't automatically have partner's mood unless we populated it or fetched it. 
+    // Let's stick to setting OWN mood first. To see partner's mood, we might need a separate endpoint or include it in /auth/user if populated.
+    // For now, let's just show own mood and a placeholder for partner.
+
     return (
         <div className="min-h-screen bg-gray-50 p-8">
             <div className="max-w-4xl mx-auto space-y-6">
+                {/* VIBE CHECK SECTION */}
+                <div className="bg-white p-6 rounded-lg shadow mb-6">
+                    <h2 className="text-xl font-bold mb-4">✨ Vibe Check</h2>
+                    <p className="text-gray-600 mb-4">How are you feeling right now? (This helps AI pick better tasks!)</p>
+                    <div className="flex gap-3 flex-wrap">
+                        {MOODS.map((m) => (
+                            <button
+                                key={m}
+                                onClick={() => handleMoodSubmit(m)}
+                                disabled={submittingMood}
+                                className={`px-4 py-2 rounded-full border transition-all ${user.currentMood === m ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                            >
+                                {m}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
                 <header className="bg-white p-6 rounded-lg shadow flex justify-between items-center">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-800">Welcome, {user.name}</h1>

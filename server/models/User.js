@@ -31,6 +31,14 @@ const UserSchema = new mongoose.Schema({
         communicationStyle: String,
         loveLanguage: String,
         interests: [String]
+    },
+    currentMood: {
+        type: String,
+        enum: ['Happy', 'Stressed', 'Tired', 'Romantic', 'Chill', ''],
+        default: ''
+    },
+    lastMoodUpdate: {
+        type: Date
     }
 });
 
