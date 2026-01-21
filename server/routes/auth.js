@@ -176,4 +176,77 @@ router.get('/user', auth, async (req, res) => {
     }
 });
 
+// @route   POST api/auth/forgot-password
+// @desc    Forgot Password - Generate Token
+// @access  Public
+router.post('/forgot-password', async (req, res) => {
+    const { email } = req.body;
+
+    try {
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ msg: 'User not found' });
+        }
+
+        // Get Reset Token
+        const resetToken = crypto.randomBytes(20).toString('hex');
+
+        // Hash token and set to resetPasswordToken field
+        user.resetPasswordToken = crypto
+            .createHash('sha256')
+            .update(resetToken)
+            .digest('hex');
+
+        // Set expire
+        user.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 Minutes
+
+        await user.save();
+
+        // Create reset url
+        // In prod, you would email this. For hackathon, we return it.
+        const resetUrl = `/reset-password/${resetToken}`;
+
+        res.status(200).json({ success: true, data: resetUrl, msg: 'Email sent (check console/network)' });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
+    }
+});
+
+// @route   PUT api/auth/reset-password/:resetToken
+// @desc    Reset Password
+// @access  Public
+router.put('/reset-password/:resetToken', async (req, res) => {
+    try {
+        // Get hashed token
+        const resetPasswordToken = crypto
+            .createHash('sha256')
+            .update(req.params.resetToken)
+            .digest('hex');
+
+        const user = await User.findOne({
+            resetPasswordToken,
+            resetPasswordExpire: { $gt: Date.now() }
+        });
+
+        if (!user) {
+            return res.status(400).json({ msg: 'Invalid token' });
+        }
+
+        // Set new password
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(req.body.password, salt);
+
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpire = undefined;
+
+        await user.save();
+
+        res.status(200).json({ success: true, data: 'Password updated' });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
+    }
+});
+
 module.exports = router;

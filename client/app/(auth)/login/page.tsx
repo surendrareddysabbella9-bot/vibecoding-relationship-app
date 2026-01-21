@@ -114,9 +114,12 @@ export default function Login() {
                             Sign in
                         </motion.button>
                     </div>
-                    <div className="text-sm text-center">
-                        <Link href="/register" className="font-medium text-rose-600 hover:text-rose-500 transition-colors">
+                    <div className="text-sm text-center space-y-2">
+                        <Link href="/register" className="font-medium text-rose-600 hover:text-rose-500 transition-colors block">
                             Don't have an account? Sign up
+                        </Link>
+                        <Link href="/forgot-password" className="font-medium text-indigo-500 hover:text-indigo-400 transition-colors block text-xs">
+                            Forgot your password?
                         </Link>
                     </div>
                 </form>

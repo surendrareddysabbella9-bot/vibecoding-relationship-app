@@ -47,7 +47,9 @@ const UserSchema = new mongoose.Schema({
     moodPrivacy: {
         type: Boolean,
         default: true // true = shared, false = private
-    }
+    },
+    resetPasswordToken: String,
+    resetPasswordExpire: Date
 });
 
 module.exports = mongoose.model('User', UserSchema);
