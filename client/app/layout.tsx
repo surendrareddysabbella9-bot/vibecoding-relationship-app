@@ -5,7 +5,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-    title: "Vibe Coding Check-in",
+    title: "VibeSync - Relationship Sync",
     description: "Relationship engagement platform",
 };
 

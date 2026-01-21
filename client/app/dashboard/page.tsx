@@ -200,7 +200,7 @@ export default function Dashboard() {
                 <div className="flex items-center gap-2">
                     <span className="text-2xl">✨</span>
                     <span className="font-extrabold text-xl text-transparent bg-clip-text bg-gradient-to-r from-rose-500 to-indigo-600">
-                        Vibe Coding
+                        VibeSync
                     </span>
                 </div>
                 <div className="flex items-center gap-4">
@@ -457,7 +457,7 @@ export default function Dashboard() {
                                 <div className="bg-green-50 text-green-700 p-4 rounded-2xl flex items-center gap-3 border border-green-100 mb-4">
                                     <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
                                     <div>
-                                        <p className="font-bold text-sm">Synced with Partner</p>
+                                        <p className="font-bold text-sm">Synced: Daily Vibe Shared</p>
                                     </div>
                                 </div>
                             ) : (
@@ -470,7 +470,7 @@ export default function Dashboard() {
                                 </div>
                             )}
 
-                            <div className="text-[10px] text-center text-gray-300 font-mono mt-2">Vibe Coding v1.0 • Built with ❤️</div>
+                            <div className="text-[10px] text-center text-gray-300 font-mono mt-2">VibeSync v1.0 • Built with ❤️</div>
                         </div>
 
                         {/* SIDEBAR TIMELINE */}
