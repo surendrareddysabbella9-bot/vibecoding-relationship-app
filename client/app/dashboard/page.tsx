@@ -170,7 +170,16 @@ export default function Dashboard() {
                 {/* VIBE CHECK SECTION */}
                 <div className="glass-card p-6 rounded-2xl shadow-xl mb-6 border-white/50">
                     <h2 className="text-2xl font-bold mb-4 gradient-text">✨ Vibe Check</h2>
-                    <p className="text-gray-700 mb-4 font-medium">How are you feeling right now? (This helps AI pick better tasks!)</p>
+                    <div className="flex justify-between items-center mb-4">
+                        <p className="text-gray-700 font-medium">How are you feeling right now? (This helps AI pick better tasks!)</p>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500">Share with partner</span>
+                            <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                                <input type="checkbox" name="toggle" id="toggle" className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-gray-300 checked:bg-green-400 checked:border-green-400 checked:right-0 right-4" defaultChecked />
+                                <label htmlFor="toggle" className="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+                            </div>
+                        </div>
+                    </div>
                     <div className="flex gap-4 flex-wrap">
                         {MOODS.map((m) => (
                             <motion.button
@@ -205,7 +214,12 @@ export default function Dashboard() {
                             </button>
                         </div>
                     </div>
-                    <button onClick={() => { localStorage.removeItem('token'); router.push('/login') }} className="text-sm font-semibold text-rose-500 hover:text-rose-700 bg-rose-50 px-4 py-2 rounded-lg hover:bg-rose-100 transition-colors">Logout</button>
+                    <div className="flex flex-col items-end gap-2">
+                        <div className="flex gap-2">
+                            <button onClick={() => router.push('/history')} className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-4 py-2 rounded-lg hover:bg-indigo-100 transition-colors">📜 Timeline</button>
+                            <button onClick={() => { localStorage.removeItem('token'); router.push('/login') }} className="text-sm font-semibold text-rose-500 hover:text-rose-700 bg-rose-50 px-4 py-2 rounded-lg hover:bg-rose-100 transition-colors">Logout</button>
+                        </div>
+                    </div>
                 </header>
 
                 {user.partnerId && (
@@ -332,6 +346,6 @@ export default function Dashboard() {
                     )}
                 </div>
             </motion.div>
-        </div>
+        </div >
     );
 }

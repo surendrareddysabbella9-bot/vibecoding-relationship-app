@@ -9,6 +9,33 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 // WARNING: process.env.GEMINI_API_KEY must be set
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "mock_key");
 
+// @route   GET api/tasks/history
+// @desc    Get all completed tasks for history view
+// @access  Private
+router.get('/history', auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user.partnerId) {
+            return res.status(400).json({ msg: 'No partner connected' });
+        }
+
+        const partnerIds = [user.id, user.partnerId].sort();
+
+        const tasks = await Task.find({
+            coupleIds: { $all: partnerIds },
+            status: 'completed'
+        })
+            .sort({ date: -1 })
+            .populate('feedback.userId', 'name');
+
+        res.json(tasks);
+
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
+    }
+});
+
 // @route   GET api/tasks/daily
 // @desc    Get or generate today's task for the couple
 // @access  Private
