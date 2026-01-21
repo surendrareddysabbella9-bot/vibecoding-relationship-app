@@ -3,6 +3,7 @@ import { useState } from 'react';
 import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 
 export default function Register() {
     const [formData, setFormData] = useState({
@@ -27,7 +28,6 @@ export default function Register() {
             localStorage.setItem('token', res.data.token);
             router.push('/dashboard');
         } catch (err: any) {
-            // Handle Express-Validator errors (array) or manual errors (msg string)
             if (err.response?.data?.errors) {
                 setError(err.response.data.errors[0].msg);
             } else {
@@ -37,25 +37,31 @@ export default function Register() {
     };
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-gray-100">
-            <div className="w-full max-w-md p-8 space-y-8 bg-white rounded shadow-lg">
+        <div className="flex min-h-screen items-center justify-center p-4">
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5 }}
+                className="w-full max-w-md p-8 space-y-8 glass-card rounded-2xl shadow-2xl"
+            >
                 <div>
-                    <h2 className="mt-6 text-3xl font-extrabold text-center text-gray-900">Create Account</h2>
+                    <h2 className="mt-6 text-4xl font-extrabold text-center gradient-text">Create Account</h2>
+                    <p className="mt-2 text-center text-sm text-gray-600">Start your better relationship today</p>
                 </div>
                 <form className="mt-8 space-y-6" onSubmit={onSubmit}>
                     {error && (
-                        <div className="bg-red-50 border-l-4 border-red-500 p-4">
-                            <p className="text-red-700 text-sm">{error}</p>
+                        <div className="bg-red-50/80 backdrop-blur-sm border-l-4 border-red-500 p-4 rounded">
+                            <p className="text-red-700 text-sm font-medium">{error}</p>
                         </div>
                     )}
-                    <div className="rounded-md shadow-sm space-y-4">
+                    <div className="rounded-md space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                             <input
                                 name="name"
                                 type="text"
                                 required
-                                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-400 text-gray-900 rounded-lg focus:outline-none focus:ring-rose-500 focus:border-rose-500 sm:text-sm bg-white/50 backdrop-blur-sm transition-all focus:bg-white"
                                 placeholder="e.g. Alice"
                                 value={name}
                                 onChange={onChange}
@@ -67,7 +73,7 @@ export default function Register() {
                                 name="email"
                                 type="email"
                                 required
-                                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-400 text-gray-900 rounded-lg focus:outline-none focus:ring-rose-500 focus:border-rose-500 sm:text-sm bg-white/50 backdrop-blur-sm transition-all focus:bg-white"
                                 placeholder="name@example.com"
                                 value={email}
                                 onChange={onChange}
@@ -80,7 +86,7 @@ export default function Register() {
                                     name="password"
                                     type={showPassword ? "text" : "password"}
                                     required
-                                    className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm pr-10"
+                                    className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-400 text-gray-900 rounded-lg focus:outline-none focus:ring-rose-500 focus:border-rose-500 sm:text-sm pr-10 bg-white/50 backdrop-blur-sm transition-all focus:bg-white"
                                     placeholder="Min 6 characters"
                                     value={password}
                                     onChange={onChange}
@@ -109,20 +115,22 @@ export default function Register() {
                     </div>
 
                     <div>
-                        <button
+                        <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
                             type="submit"
-                            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-bold rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-lg"
                         >
                             Sign up
-                        </button>
+                        </motion.button>
                     </div>
                     <div className="text-sm text-center">
-                        <Link href="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
+                        <Link href="/login" className="font-medium text-rose-600 hover:text-rose-500 transition-colors">
                             Already have an account? Sign in
                         </Link>
                     </div>
                 </form>
-            </div>
+            </motion.div>
         </div>
     );
 }
