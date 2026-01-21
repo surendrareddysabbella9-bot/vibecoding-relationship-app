@@ -68,7 +68,7 @@ export default function Dashboard() {
     const fetchDailyTask = async () => {
         setLoadingTask(true);
         try {
-            const res = await api.get('/tasks/today');
+            const res = await api.get('/tasks/daily');
             setTask(res.data);
             if (res.data.userRating) {
                 setHasGivenFeedback(true);
