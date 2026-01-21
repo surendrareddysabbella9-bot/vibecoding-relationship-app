@@ -435,8 +435,15 @@ export default function Dashboard() {
                                 </div>
 
                                 <div className="flex items-center gap-6 border-l pl-6 border-gray-100">
-                                    <div className="flex flex-col items-center">
-                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Intensity</span>
+                                    <div className="flex flex-col items-center relative group">
+                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 cursor-help border-b border-dashed border-gray-300">Intensity</span>
+                                        
+                                        {/* Tooltip */}
+                                        <div className="absolute bottom-full mb-2 w-48 p-2 bg-gray-800 text-white text-[10px] rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 text-center z-50 pointer-events-none shadow-lg">
+                                            Controls the depth of your daily questions (Chill vs Deep)
+                                            <div className="absolute top-100 left-1/2 -translate-x-1/2 border-8 border-transparent border-t-gray-800"></div>
+                                        </div>
+
                                         <div className="flex items-center gap-2 bg-gray-100 rounded-full p-1">
                                             {[1, 2, 3].map((val) => (
                                                 <button
