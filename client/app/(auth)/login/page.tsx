@@ -1,11 +1,11 @@
 "use client";
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import api from '@/lib/api';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 
-export default function Login() {
+function LoginForm() {
     const [formData, setFormData] = useState({
         email: '',
         password: ''
@@ -132,5 +132,13 @@ export default function Login() {
                 </form>
             </motion.div>
         </div>
+    );
+}
+
+export default function Login() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+            <LoginForm />
+        </Suspense>
     );
 }
