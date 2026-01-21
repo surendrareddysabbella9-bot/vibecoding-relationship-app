@@ -364,5 +364,62 @@ router.get('/stats', auth, async (req, res) => {
     }
 });
 
-module.exports = router;
+// @route   POST api/tasks/send-reminders
+// @desc    Send daily reminder emails (can be triggered by cron job)
+// @access  Public (protected by secret key)
+router.post('/send-reminders', async (req, res) => {
+    // Simple API key protection
+    const apiKey = req.headers['x-api-key'];
+    if (apiKey !== process.env.REMINDER_API_KEY) {
+        return res.status(401).json({ msg: 'Unauthorized' });
+    }
 
+    try {
+        const { sendDailyReminderEmail } = require('../utils/email');
+
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+
+        // Find all users with partners who haven't completed today's task
+        const users = await User.find({ partnerId: { $ne: null } });
+
+        let emailsSent = 0;
+        const errors = [];
+
+        for (const user of users) {
+            const partnerIds = [user.id, user.partnerId].sort();
+
+            // Check if task exists for today
+            const task = await Task.findOne({
+                coupleIds: { $all: partnerIds },
+                date: { $gte: startOfDay }
+            });
+
+            // Only send reminder if task exists and user hasn't responded
+            if (task && task.status !== 'completed') {
+                const userResponded = task.responses?.some(r => r.userId.toString() === user.id);
+
+                if (!userResponded) {
+                    try {
+                        await sendDailyReminderEmail(user.email, user.name, task.title);
+                        emailsSent++;
+                    } catch (emailErr) {
+                        errors.push({ email: user.email, error: emailErr.message });
+                    }
+                }
+            }
+        }
+
+        res.json({
+            success: true,
+            emailsSent,
+            errors: errors.length > 0 ? errors : undefined
+        });
+
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
+    }
+});
+
+module.exports = router;

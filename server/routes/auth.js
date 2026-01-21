@@ -2,10 +2,11 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { check, validationResult } = require('express-validator'); // Note: Need to install express-validator
+const { check, validationResult } = require('express-validator');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 const crypto = require('crypto');
+const { sendPasswordResetEmail } = require('../utils/email');
 
 // @route   POST api/auth/register
 // @desc    Register user
@@ -177,7 +178,7 @@ router.get('/user', auth, async (req, res) => {
 });
 
 // @route   POST api/auth/forgot-password
-// @desc    Forgot Password - Generate Token
+// @desc    Forgot Password - Generate Token and Send Email
 // @access  Public
 router.post('/forgot-password', async (req, res) => {
     const { email } = req.body;
@@ -185,7 +186,8 @@ router.post('/forgot-password', async (req, res) => {
     try {
         const user = await User.findOne({ email });
         if (!user) {
-            return res.status(404).json({ msg: 'User not found' });
+            // For security, don't reveal if user exists
+            return res.status(200).json({ success: true, msg: 'If an account exists, a reset email has been sent.' });
         }
 
         // Get Reset Token
@@ -203,10 +205,21 @@ router.post('/forgot-password', async (req, res) => {
         await user.save();
 
         // Create reset url
-        // In prod, you would email this. For hackathon, we return it.
-        const resetUrl = `/reset-password/${resetToken}`;
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
 
-        res.status(200).json({ success: true, data: resetUrl, msg: 'Email sent (check console/network)' });
+        // Send email
+        try {
+            await sendPasswordResetEmail(email, resetUrl, user.name);
+            res.status(200).json({ success: true, msg: 'Password reset email sent! Check your inbox.' });
+        } catch (emailError) {
+            console.error('Email send error:', emailError);
+            // Clear token if email fails
+            user.resetPasswordToken = undefined;
+            user.resetPasswordExpire = undefined;
+            await user.save();
+            return res.status(500).json({ msg: 'Email could not be sent. Please try again.' });
+        }
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server error');
