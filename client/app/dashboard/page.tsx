@@ -22,6 +22,14 @@ interface User {
     };
 }
 
+interface PartnerStatus {
+    connected: boolean;
+    name?: string;
+    mood?: string;
+    intensity?: number;
+    lastMoodUpdate?: string;
+}
+
 interface Response {
     userId: { _id: string, name: string } | string;
     text: string;
@@ -48,6 +56,7 @@ const MOODS = ['Happy', 'Stressed', 'Tired', 'Romantic', 'Chill'];
 export default function Dashboard() {
     const router = useRouter();
     const [user, setUser] = useState<User | null>(null);
+    const [partnerStatus, setPartnerStatus] = useState<PartnerStatus | null>(null);
     const [partnerCode, setPartnerCode] = useState('');
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
@@ -95,15 +104,26 @@ export default function Dashboard() {
 
             // Initialize UI controls
             if (res.data.taskIntensity) setIntensity(res.data.taskIntensity);
-            if (res.data.moodPrivacy !== undefined) setShareMood(res.data.moodPrivacy);
+            // Default to true if undefined
+            setShareMood(res.data.moodPrivacy !== undefined ? res.data.moodPrivacy : true);
 
             if (res.data.partnerId) {
                 fetchDailyTask(res.data);
                 fetchHistory(); // Fetch sidebar data
+                fetchPartnerStatus(); // Fetch partner info
             }
         } catch {
             localStorage.removeItem('token');
             router.push('/login');
+        }
+    };
+
+    const fetchPartnerStatus = async () => {
+        try {
+            const res = await api.get('/partner/status');
+            setPartnerStatus(res.data);
+        } catch (err) {
+            console.error("Failed to fetch partner status");
         }
     };
 
@@ -139,10 +159,24 @@ export default function Dashboard() {
         try {
             await api.put('/auth/mood', { mood, intensity, privacy: shareMood });
             setUser(prev => prev ? { ...prev, currentMood: mood } : null);
+            // Refresh partner status to ensure sync? Actually partner status is THEIRS.
         } catch (err) {
             console.error("Failed to update mood", err);
         }
         setSubmittingMood(false);
+    };
+
+    // Also update preference when toggle changes immediately
+    const togglePrivacy = async (checked: boolean) => {
+        setShareMood(checked);
+        if (user && user.currentMood) {
+            try {
+                // Update backend immediately so partner sees change
+                await api.put('/auth/mood', { mood: user.currentMood, intensity, privacy: checked });
+            } catch (err) {
+                console.error(err);
+            }
+        }
     };
 
     const copyCode = () => {
@@ -164,6 +198,7 @@ export default function Dashboard() {
             const userRes = await api.get('/auth/user');
             setUser(userRes.data);
             fetchDailyTask(userRes.data);
+            fetchPartnerStatus();
         } catch (err: any) {
             setError(err.response?.data?.msg || 'Connection failed');
         }
@@ -301,14 +336,14 @@ export default function Dashboard() {
                                             ))}
                                         </div>
                                     </div>
-                                    <div className="flex flex-col items-center">
-                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Privacy</span>
+                                    <div className="flex flex-col items-center" title="Allow partner to see your mood">
+                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Share Mood</span>
                                         <div className="relative inline-block w-10 align-middle select-none">
                                             <input
                                                 type="checkbox"
                                                 className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-2 appearance-none cursor-pointer border-gray-300 checked:bg-green-500 checked:border-green-500 checked:right-0 right-0 transition-all duration-200"
                                                 checked={shareMood}
-                                                onChange={(e) => setShareMood(e.target.checked)}
+                                                onChange={(e) => togglePrivacy(e.target.checked)}
                                             />
                                             <label className="toggle-label block overflow-hidden h-5 rounded-full bg-gray-200 cursor-pointer"></label>
                                         </div>
@@ -513,7 +548,34 @@ export default function Dashboard() {
                                 </div>
                             )}
 
-                            <div className="text-[10px] text-center text-gray-300 font-mono mt-2">VibeSync v1.0 • Built with ❤️</div>
+                            {/* PARTNER MOOD - NEW FEATURE */}
+                            {partnerStatus?.connected && (
+                                <div className="mt-4 pt-4 border-t border-gray-100">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Partner's Vibe</h3>
+                                        {partnerStatus.lastMoodUpdate && <span className="text-[10px] text-gray-400">Updated recently</span>}
+                                    </div>
+
+                                    <div className="p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                                        {partnerStatus.mood ? (
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xl">✨</span>
+                                                <div>
+                                                    <p className="font-bold text-indigo-700 text-sm">{partnerStatus.name} is feeling</p>
+                                                    <p className="text-lg font-extrabold text-indigo-900">{partnerStatus.mood}</p>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2 opacity-60">
+                                                <span className="text-xl">🙈</span>
+                                                <p className="text-xs text-gray-500 italic">{partnerStatus.name || 'Partner'} has hidden their mood.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="text-[10px] text-center text-gray-300 font-mono mt-4">VibeSync v1.0 • Built with ❤️</div>
                         </div>
 
                         {/* SIDEBAR TIMELINE */}

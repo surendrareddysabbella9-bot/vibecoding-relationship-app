@@ -45,4 +45,38 @@ router.post('/connect', auth, async (req, res) => {
     }
 });
 
+// @route   GET api/partner/status
+// @desc    Get partner status and mood
+// @access  Private
+router.get('/status', auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user.partnerId) {
+            return res.json({ connected: false });
+        }
+
+        const partner = await User.findById(user.partnerId);
+        if (!partner) {
+            // Data inconsistency cleanup
+            user.partnerId = null;
+            await user.save();
+            return res.json({ connected: false });
+        }
+
+        // Return partner info respecting privacy
+        // moodPrivacy: true = Shared, false = Private
+        res.json({
+            connected: true,
+            name: partner.name,
+            mood: partner.moodPrivacy ? partner.currentMood : null,
+            intensity: partner.moodPrivacy ? partner.taskIntensity : null,
+            lastMoodUpdate: partner.lastMoodUpdate
+        });
+
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
+    }
+});
+
 module.exports = router;
