@@ -36,6 +36,27 @@ router.get('/daily', auth, async (req, res) => {
             return res.json(task);
         }
 
+        // --- AI GENERATION WITH FEEDBACK HISTORY ---
+
+        // 1. Fetch relevant history (last 5 completed tasks with feedback)
+        const historyTasks = await Task.find({
+            coupleIds: { $all: partnerIds },
+            status: 'completed'
+        })
+            .sort({ date: -1 })
+            .limit(5)
+            .select('title category feedback');
+
+        // 2. Format history for the prompt
+        let historyContext = "No previous history.";
+        if (historyTasks.length > 0) {
+            historyContext = historyTasks.map(t => {
+                const ratings = t.feedback.map(f => `${f.rating}/5`).join(', ');
+                const comments = t.feedback.map(f => f.comment ? `"${f.comment}"` : '').filter(c => c).join('; ');
+                return `- Task: "${t.title}" (${t.category}). Ratings: [${ratings}]. Comments: [${comments}]`;
+            }).join('\n');
+        }
+
         // If no task, generate one using Gemini
         let aiResponse = {
             title: "Share a childhood memory",
@@ -46,7 +67,15 @@ router.get('/daily', auth, async (req, res) => {
         if (process.env.GEMINI_API_KEY) {
             try {
                 const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-                const prompt = "Generate one simple, engaging daily activity for a couple to do today to strengthen their relationship. Response must be JSON with keys: title, description, category.";
+                const prompt = `Generate one simple, engaging daily activity for a couple to do today to strengthen their relationship. 
+                
+                Couple's Activity History & Feedback:
+                ${historyContext}
+                
+                Instructions:
+                - Analyze the feedback. If ratings are low, try a different category. If high, do similar but new things.
+                - Avoid repeating previous tasks.
+                - Response must be strictly JSON with keys: title, description, category.`;
 
                 const result = await model.generateContent(prompt);
                 const response = await result.response;
@@ -97,6 +126,42 @@ router.put('/:id/complete', auth, async (req, res) => {
         await task.save();
 
         res.json(task);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
+    }
+});
+
+// @route   POST api/tasks/:id/feedback
+// @desc    Add feedback to a task
+// @access  Private
+router.post('/:id/feedback', auth, async (req, res) => {
+    const { rating, comment } = req.body;
+
+    try {
+        let task = await Task.findById(req.params.id);
+
+        if (!task) {
+            return res.status(404).json({ msg: 'Task not found' });
+        }
+
+        if (!task.coupleIds.includes(req.user.id)) {
+            return res.status(401).json({ msg: 'Not authorized' });
+        }
+
+        // Remove existing feedback from this user if any
+        task.feedback = task.feedback.filter(f => f.userId.toString() !== req.user.id);
+
+        // Add new feedback
+        task.feedback.push({
+            userId: req.user.id,
+            rating,
+            comment
+        });
+
+        await task.save();
+        res.json(task);
+
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server error');

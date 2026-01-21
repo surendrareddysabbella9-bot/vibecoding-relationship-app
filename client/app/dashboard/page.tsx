@@ -11,12 +11,19 @@ interface User {
     partnerId: string | null;
 }
 
+interface Feedback {
+    userId: string;
+    rating: number;
+    comment: string;
+}
+
 interface Task {
     _id: string;
     title: string;
     description: string;
     category: string;
     status: 'pending' | 'completed';
+    feedback: Feedback[];
 }
 
 export default function Dashboard() {
@@ -26,6 +33,12 @@ export default function Dashboard() {
     const [loadingTask, setLoadingTask] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+
+    // Feedback States
+    const [rating, setRating] = useState(0);
+    const [comment, setComment] = useState('');
+    const [submittingFeedback, setSubmittingFeedback] = useState(false);
+
     const router = useRouter();
 
     useEffect(() => {
@@ -64,10 +77,9 @@ export default function Dashboard() {
         try {
             const res = await api.post('/partner/connect', { partnerCode });
             setSuccess(`Connected with ${res.data.partnerName}!`);
-            // Refresh user data to show updated state
             const userRes = await api.get('/auth/user');
             setUser(userRes.data);
-            fetchDailyTask(); // Fetch task after connecting
+            fetchDailyTask();
         } catch (err: any) {
             setError(err.response?.data?.msg || 'Connection failed');
         }
@@ -82,6 +94,22 @@ export default function Dashboard() {
             console.error("Failed to complete task", err);
         }
     };
+
+    const submitFeedback = async () => {
+        if (!task || rating === 0) return;
+        setSubmittingFeedback(true);
+        try {
+            const res = await api.post(`/tasks/${task._id}/feedback`, { rating, comment });
+            setTask(res.data); // Update task with new feedback
+            setSuccess("Feedback submitted! We'll use this to improve future tasks.");
+        } catch (err) {
+            console.error("Failed to submit feedback", err);
+        } finally {
+            setSubmittingFeedback(false);
+        }
+    };
+
+    const hasGivenFeedback = task?.feedback?.some(f => f.userId === user?._id);
 
     if (!user) return <div className="p-8">Loading...</div>;
 
@@ -116,8 +144,42 @@ export default function Dashboard() {
                                 <p className="text-white/90 text-lg">{task.description}</p>
 
                                 {task.status === 'completed' ? (
-                                    <div className="mt-4 inline-block bg-green-500 text-white px-4 py-2 rounded-lg font-bold">
-                                        ✅ Completed
+                                    <div className="mt-4 bg-white/10 p-4 rounded-lg">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold">✅ Completed</span>
+                                        </div>
+
+                                        {!hasGivenFeedback ? (
+                                            <div className="mt-4 space-y-3">
+                                                <p className="font-semibold">How was it? Rate to improve future tasks:</p>
+                                                <div className="flex gap-2">
+                                                    {[1, 2, 3, 4, 5].map((star) => (
+                                                        <button
+                                                            key={star}
+                                                            onClick={() => setRating(star)}
+                                                            className={`text-2xl transition-transform hover:scale-110 ${rating >= star ? 'opacity-100' : 'opacity-40'}`}
+                                                        >
+                                                            ⭐
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <textarea
+                                                    value={comment}
+                                                    onChange={(e) => setComment(e.target.value)}
+                                                    placeholder="Any thoughts? (Optional)"
+                                                    className="w-full text-black p-2 rounded text-sm min-h-[60px]"
+                                                />
+                                                <button
+                                                    onClick={submitFeedback}
+                                                    disabled={rating === 0 || submittingFeedback}
+                                                    className="bg-white text-indigo-600 px-4 py-2 rounded font-bold text-sm disabled:opacity-50"
+                                                >
+                                                    {submittingFeedback ? 'Submitting...' : 'Submit Feedback'}
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm opacity-80 mt-2">Thanks for your feedback! We'll use it to curate better tasks for you.</p>
+                                        )}
                                     </div>
                                 ) : (
                                     <button
@@ -135,6 +197,7 @@ export default function Dashboard() {
                 )}
 
                 <div className="bg-white p-6 rounded-lg shadow">
+                    {success && <p className="mb-4 text-green-600 bg-green-50 p-2 rounded">{success}</p>}
                     <h2 className="text-xl font-bold mb-4">Relationship Status</h2>
 
                     {user.partnerId ? (
@@ -164,7 +227,6 @@ export default function Dashboard() {
                                 </button>
                             </form>
                             {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
-                            {success && <p className="text-green-500 text-sm mt-2">{success}</p>}
                         </div>
                     )}
                 </div>
