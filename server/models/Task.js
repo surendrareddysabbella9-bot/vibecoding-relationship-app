@@ -17,6 +17,17 @@ const TaskSchema = new mongoose.Schema({
         type: String,
         default: 'General'
     },
+    responses: [{
+        userId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User'
+        },
+        text: String,
+        date: {
+            type: Date,
+            default: Date.now
+        }
+    }],
     date: {
         type: Date,
         default: Date.now

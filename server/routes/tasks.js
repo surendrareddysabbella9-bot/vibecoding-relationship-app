@@ -60,6 +60,7 @@ router.get('/daily', auth, async (req, res) => {
         });
 
         if (task) {
+            await task.populate('responses.userId', 'name');
             return res.json(task);
         }
 
@@ -140,6 +141,44 @@ router.get('/daily', auth, async (req, res) => {
             description: aiResponse.description,
             category: aiResponse.category
         });
+
+        await task.save();
+        res.json(task);
+
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
+    }
+});
+
+// @route   POST api/tasks/:id/respond
+// @desc    Submit a response to the task (Interactive Exchange)
+// @access  Private
+router.post('/:id/respond', auth, async (req, res) => {
+    try {
+        const { text } = req.body;
+        let task = await Task.findById(req.params.id);
+
+        if (!task) return res.status(404).json({ msg: 'Task not found' });
+        if (!task.coupleIds.includes(req.user.id)) return res.status(401).json({ msg: 'Not authorized' });
+
+        // Update Response
+        const index = task.responses.findIndex(r => r.userId.toString() === req.user.id);
+        if (index > -1) {
+            task.responses[index].text = text;
+            task.responses[index].date = Date.now();
+        } else {
+            task.responses.push({ userId: req.user.id, text });
+        }
+
+        // Check completion (both responded)
+        // We assume 2 people in coupleIds.
+        const responderIds = task.responses.map(r => r.userId.toString());
+        const allResponded = task.coupleIds.every(id => responderIds.includes(id.toString()));
+
+        if (allResponded) {
+            task.status = 'completed';
+        }
 
         await task.save();
         res.json(task);

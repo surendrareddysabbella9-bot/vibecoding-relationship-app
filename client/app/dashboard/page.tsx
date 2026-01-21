@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -22,6 +22,12 @@ interface User {
     };
 }
 
+interface Response {
+    userId: { _id: string, name: string } | string;
+    text: string;
+    date: string;
+}
+
 interface Task {
     _id: string;
     title: string;
@@ -29,6 +35,7 @@ interface Task {
     category?: string;
     status: string;
     date?: string;
+    responses?: Response[];
     feedback?: {
         userId: string;
         rating: number;
@@ -52,6 +59,12 @@ export default function Dashboard() {
 
     // UI States
     const [loadingTask, setLoadingTask] = useState(false);
+
+    // Response State
+    const [responseText, setResponseText] = useState('');
+    const [submittingResponse, setSubmittingResponse] = useState(false);
+
+    // Feedback State
     const [rating, setRating] = useState(0);
     const [comment, setComment] = useState('');
     const [submittingFeedback, setSubmittingFeedback] = useState(false);
@@ -115,7 +128,6 @@ export default function Dashboard() {
     const fetchHistory = async () => {
         try {
             const res = await api.get('/tasks/history');
-            // Take only last 5 for sidebar
             setHistory(res.data.slice(0, 5));
         } catch (err) {
             console.error("Failed to fetch history", err);
@@ -157,22 +169,28 @@ export default function Dashboard() {
         }
     };
 
-    const completeTask = async () => {
-        if (!task) return;
+    // New Interactive Flow
+    const submitResponse = async () => {
+        if (!task || !responseText.trim()) return;
+        setSubmittingResponse(true);
         try {
-            const res = await api.put(`/tasks/${task._id}/complete`);
-            setTask(res.data);
-            // Refresh history to show the new completed task immediately
-            fetchHistory();
-            confetti({
-                particleCount: 150,
-                spread: 100,
-                origin: { y: 0.6 },
-                colors: ['#e11d48', '#4f46e5', '#ffffff']
-            });
+            const res = await api.post(`/tasks/${task._id}/respond`, { text: responseText });
+            setTask(res.data); // Update task with new response/status
+            setResponseText('');
+
+            if (res.data.status === 'completed') {
+                confetti({
+                    particleCount: 200,
+                    spread: 120,
+                    origin: { y: 0.6 },
+                    colors: ['#e11d48', '#4f46e5', '#ffffff']
+                });
+                fetchHistory(); // Update sidebar
+            }
         } catch (err) {
-            console.error("Failed to complete task", err);
+            console.error("Failed to submit response", err);
         }
+        setSubmittingResponse(false);
     };
 
     const submitFeedback = async () => {
@@ -186,6 +204,12 @@ export default function Dashboard() {
         }
         setSubmittingFeedback(false);
     };
+
+    // Helper to check if I have responded
+    const myResponse = task?.responses?.find(r => {
+        const rId = typeof r.userId === 'string' ? r.userId : r.userId._id;
+        return rId === user?._id;
+    });
 
     if (!user) return (
         <div className="flex items-center justify-center min-h-screen">
@@ -302,7 +326,7 @@ export default function Dashboard() {
                                 <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-[100px] -mt-20 -mr-20"></div>
                                 <div className="absolute bottom-0 left-0 w-64 h-64 bg-rose-500/20 rounded-full blur-[80px] -mb-10 -ml-10"></div>
 
-                                <div className="relative z-10">
+                                <div className="relative z-10 w-full">
                                     <div className="flex items-center gap-3 mb-6 opacity-80">
                                         <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider backdrop-blur-md">
                                             {task?.category || 'Daily Vibe'}
@@ -324,23 +348,34 @@ export default function Dashboard() {
                                                 <p className="text-indigo-100 text-xl font-light leading-relaxed max-w-2xl">{task.description}</p>
                                             </div>
 
+                                            {/* INTERACTIVE COMPONENT - THE PIVOT */}
                                             {task.status === 'completed' ? (
                                                 <motion.div
                                                     initial={{ y: 20, opacity: 0 }}
                                                     animate={{ y: 0, opacity: 1 }}
                                                     className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/10"
                                                 >
-                                                    <div className="flex items-center justify-between mb-4">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="bg-green-500/20 text-green-300 p-1 px-2 rounded-lg text-sm font-bold border border-green-500/30">
-                                                                ✓ Task Completed
-                                                            </div>
+                                                    <div className="flex items-center gap-2 mb-6">
+                                                        <div className="bg-green-500/20 text-green-300 p-1 px-2 rounded-lg text-sm font-bold border border-green-500/30">
+                                                            ✓ Completed
                                                         </div>
+                                                        <p className="text-sm font-bold opacity-70">Responses Revealed!</p>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                                        {task.responses?.map((r, i) => (
+                                                            <div key={i} className="bg-white/10 p-4 rounded-xl border border-white/20">
+                                                                <p className="text-xs font-bold uppercase tracking-wider opacity-60 mb-2">
+                                                                    {typeof r.userId === 'object' ? r.userId.name : 'Partner'}
+                                                                </p>
+                                                                <p className="text-lg font-medium">{r.text}</p>
+                                                            </div>
+                                                        ))}
                                                     </div>
 
                                                     {!hasGivenFeedback ? (
-                                                        <div className="space-y-4">
-                                                            <p className="font-medium text-white/90">How did it go? Rate your experience:</p>
+                                                        <div className="space-y-4 border-t border-white/10 pt-4">
+                                                            <p className="font-medium text-white/90">How was this connection?</p>
                                                             <div className="flex gap-3">
                                                                 {[1, 2, 3, 4, 5].map((star) => (
                                                                     <button
@@ -348,50 +383,58 @@ export default function Dashboard() {
                                                                         onClick={() => setRating(star)}
                                                                         className={`text-3xl transition-transform hover:scale-125 focus:outline-none ${rating >= star ? 'scale-110 grayscale-0' : 'grayscale opacity-50 hover:grayscale-0 hover:opacity-100'}`}
                                                                     >
-                                                                        ⭐
+                                                                        ❤️
                                                                     </button>
                                                                 ))}
                                                             </div>
                                                             {rating > 0 && (
-                                                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}>
-                                                                    <textarea
-                                                                        value={comment}
-                                                                        onChange={(e) => setComment(e.target.value)}
-                                                                        placeholder="Share a thought..."
-                                                                        className="w-full bg-white/10 border border-white/20 rounded-xl p-3 text-white placeholder-white/50 focus:bg-white/20 outline-none text-sm min-h-[80px]"
-                                                                    />
-                                                                    <div className="mt-3 flex justify-end">
-                                                                        <button
-                                                                            onClick={submitFeedback}
-                                                                            disabled={submittingFeedback}
-                                                                            className="bg-white text-indigo-900 px-6 py-2 rounded-lg font-bold text-sm hover:bg-gray-100 transition-colors shadow-lg"
-                                                                        >
-                                                                            {submittingFeedback ? 'Sending...' : 'Send Feedback'}
-                                                                        </button>
-                                                                    </div>
+                                                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="w-full">
+                                                                    <button
+                                                                        onClick={submitFeedback}
+                                                                        disabled={submittingFeedback}
+                                                                        className="mt-2 bg-white text-indigo-900 px-6 py-2 rounded-lg font-bold text-sm hover:bg-gray-100 transition-colors shadow-lg"
+                                                                    >
+                                                                        {submittingFeedback ? 'Saving...' : 'Save Feedback'}
+                                                                    </button>
                                                                 </motion.div>
                                                             )}
                                                         </div>
                                                     ) : (
-                                                        <div className="flex items-center gap-3 text-indigo-200 bg-indigo-900/30 p-4 rounded-xl">
-                                                            <span className="text-xl">🙌</span>
-                                                            <p className="text-sm font-medium">Thanks for sharing! We've saved this to your timeline.</p>
-                                                        </div>
+                                                        <p className="text-sm opacity-70">Feedback saved. See you tomorrow!</p>
                                                     )}
                                                 </motion.div>
-                                            ) : (
+                                            ) : myResponse ? (
                                                 <div className="pt-4">
-                                                    <motion.button
-                                                        whileHover={{ scale: 1.05 }}
-                                                        whileTap={{ scale: 0.95 }}
-                                                        onClick={completeTask}
-                                                        className="group bg-white text-indigo-600 px-8 py-4 rounded-full font-bold text-lg hover:shadow-[0_0_30px_rgba(255,255,255,0.3)] transition-all shadow-xl flex items-center gap-3"
-                                                    >
-                                                        <span>We Did It!</span>
-                                                        <span className="group-hover:rotate-12 transition-transform">🎉</span>
-                                                    </motion.button>
+                                                    <div className="bg-white/5 border border-white/10 p-8 rounded-2xl text-center space-y-4">
+                                                        <div className="text-4xl animate-pulse">🔒</div>
+                                                        <h3 className="text-xl font-bold">Response Locked</h3>
+                                                        <p className="text-indigo-200">Waiting for your partner to add their vibe...</p>
+                                                        <div className="text-sm bg-white/10 inline-block px-3 py-1 rounded-full">
+                                                            You said: <span className="italic">"{myResponse.text}"</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-4 bg-white/5 p-6 rounded-2xl border border-white/10">
+                                                    <label className="text-sm font-bold uppercase tracking-wider block opacity-70">Your Response</label>
+                                                    <textarea
+                                                        value={responseText}
+                                                        onChange={(e) => setResponseText(e.target.value)}
+                                                        placeholder="Type your answer here to unlock..."
+                                                        className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-white placeholder-white/30 focus:bg-white/10 outline-none text-lg min-h-[100px] resize-none transition-colors"
+                                                    />
+                                                    <div className="flex justify-end">
+                                                        <button
+                                                            onClick={submitResponse}
+                                                            disabled={submittingResponse || !responseText.trim()}
+                                                            className="bg-white text-indigo-900 px-8 py-3 rounded-xl font-bold text-lg hover:shadow-lg hover:bg-indigo-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                                        >
+                                                            {submittingResponse ? 'Sending...' : 'Send & Lock 🔒'}
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             )}
+
                                         </div>
                                     ) : (
                                         <p className="text-lg italic text-white/70">Dreaming up a new task...</p>
