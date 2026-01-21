@@ -355,15 +355,17 @@ export default function Dashboard() {
                                     </div>
                                     <div className="flex flex-col items-center" title="Allow partner to see your mood">
                                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Share Mood</span>
-                                        <div className="relative inline-block w-10 align-middle select-none">
-                                            <input
-                                                type="checkbox"
-                                                className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-2 appearance-none cursor-pointer border-gray-300 checked:bg-green-500 checked:border-green-500 checked:right-0 right-0 transition-all duration-200"
-                                                checked={shareMood}
-                                                onChange={(e) => togglePrivacy(e.target.checked)}
+                                        <button
+                                            type="button"
+                                            onClick={() => togglePrivacy(!shareMood)}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none ${shareMood ? 'bg-green-500' : 'bg-gray-300'
+                                                }`}
+                                        >
+                                            <span
+                                                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition-transform duration-200 ease-in-out ${shareMood ? 'translate-x-6' : 'translate-x-1'
+                                                    }`}
                                             />
-                                            <label className="toggle-label block overflow-hidden h-5 rounded-full bg-gray-200 cursor-pointer"></label>
-                                        </div>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
