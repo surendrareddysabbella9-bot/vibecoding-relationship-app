@@ -9,6 +9,11 @@ interface User {
     email: string;
     partnerLinkCode: string;
     partnerId: string | null;
+    onboardingData?: {
+        communicationStyle: string;
+        loveLanguage: string;
+        interests: string[];
+    };
 }
 
 interface Feedback {
@@ -55,9 +60,11 @@ export default function Dashboard() {
                 const res = await api.get('/auth/user');
                 setUser(res.data);
 
-                // Optional: Check if user has onboarded. 
-                // We won't force redirect for now to keep flow verification simple.
-                // if (!res.data.onboardingData) router.push('/onboarding');
+                // Redirect to onboarding if not completed
+                if (!res.data.onboardingData || !res.data.onboardingData.loveLanguage) {
+                    router.push('/onboarding');
+                    return;
+                }
 
                 if (res.data.partnerId) {
                     fetchDailyTask();
