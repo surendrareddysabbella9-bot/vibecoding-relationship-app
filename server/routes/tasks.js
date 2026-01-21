@@ -57,6 +57,19 @@ router.get('/daily', auth, async (req, res) => {
             }).join('\n');
         }
 
+        // 3. Get Onboarding Data (Preferences)
+        // Since we fetched 'user', we have one partner's data. Ideally we fetch both.
+        // For MVP, we'll try to use the current user's onboarding data if available.
+        let preferencesContext = "No specific preferences.";
+        if (user.onboardingData) {
+            const { communicationStyle, loveLanguage, interests } = user.onboardingData;
+            preferencesContext = `
+            - Communication Style: ${communicationStyle || 'Unknown'}
+            - Love Language: ${loveLanguage || 'Unknown'}
+            - Interests: ${interests && interests.length > 0 ? interests.join(', ') : 'Unknown'}
+            `;
+        }
+
         // If no task, generate one using Gemini
         let aiResponse = {
             title: "Share a childhood memory",
@@ -69,10 +82,14 @@ router.get('/daily', auth, async (req, res) => {
                 const model = genAI.getGenerativeModel({ model: "gemini-pro" });
                 const prompt = `Generate one simple, engaging daily activity for a couple to do today to strengthen their relationship. 
                 
+                Couple's Helper Context (Onboarding):
+                ${preferencesContext}
+
                 Couple's Activity History & Feedback:
                 ${historyContext}
                 
                 Instructions:
+                - TAILOR the task to their Love Language and Interests if possible.
                 - Analyze the feedback. If ratings are low, try a different category. If high, do similar but new things.
                 - Avoid repeating previous tasks.
                 - Response must be strictly JSON with keys: title, description, category.`;

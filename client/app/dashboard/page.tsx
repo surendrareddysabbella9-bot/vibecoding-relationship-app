@@ -38,14 +38,26 @@ export default function Dashboard() {
     const [rating, setRating] = useState(0);
     const [comment, setComment] = useState('');
     const [submittingFeedback, setSubmittingFeedback] = useState(false);
+    const [copySuccess, setCopySuccess] = useState('');
 
     const router = useRouter();
 
     useEffect(() => {
+        // Check for partner code in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const codeFromUrl = urlParams.get('code');
+        if (codeFromUrl) {
+            setPartnerCode(codeFromUrl);
+        }
+
         const fetchUser = async () => {
             try {
                 const res = await api.get('/auth/user');
                 setUser(res.data);
+
+                // Optional: Check if user has onboarded. 
+                // We won't force redirect for now to keep flow verification simple.
+                // if (!res.data.onboardingData) router.push('/onboarding');
 
                 if (res.data.partnerId) {
                     fetchDailyTask();
@@ -85,6 +97,14 @@ export default function Dashboard() {
         }
     };
 
+    const copyLink = () => {
+        if (!user) return;
+        const link = `${window.location.origin}/dashboard?code=${user.partnerLinkCode}`;
+        navigator.clipboard.writeText(link);
+        setCopySuccess('Link copied!');
+        setTimeout(() => setCopySuccess(''), 2000);
+    };
+
     const completeTask = async () => {
         if (!task) return;
         try {
@@ -119,7 +139,15 @@ export default function Dashboard() {
                 <header className="bg-white p-6 rounded-lg shadow flex justify-between items-center">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-800">Welcome, {user.name}</h1>
-                        <p className="text-gray-600 text-sm mt-1">Partner Code: <span className="font-mono font-bold bg-gray-100 px-2 py-1 rounded">{user.partnerLinkCode}</span></p>
+                        <div className="flex items-center gap-2 mt-1">
+                            <p className="text-gray-600 text-sm">Partner Code: <span className="font-mono font-bold bg-gray-100 px-2 py-1 rounded">{user.partnerLinkCode}</span></p>
+                            <button
+                                onClick={copyLink}
+                                className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded hover:bg-indigo-200 transition-colors"
+                            >
+                                {copySuccess || 'Copy Invite Link'}
+                            </button>
+                        </div>
                     </div>
                     <button onClick={() => { localStorage.removeItem('token'); router.push('/login') }} className="text-sm text-red-500 hover:text-red-700">Logout</button>
                 </header>
