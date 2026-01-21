@@ -214,11 +214,14 @@ router.post('/forgot-password', async (req, res) => {
             res.status(200).json({ success: true, msg: 'Password reset email sent! Check your inbox.' });
         } catch (emailError) {
             console.error('Email send error:', emailError);
-            // Clear token if email fails
-            user.resetPasswordToken = undefined;
-            user.resetPasswordExpire = undefined;
-            await user.save();
-            return res.status(500).json({ msg: 'Email could not be sent. Please try again.' });
+            // For hackathon demo: If email fails (domain not verified), still provide the link
+            // In production, you would verify a domain and this wouldn't be needed
+            console.log('DEMO MODE - Reset URL:', resetUrl);
+            res.status(200).json({
+                success: true,
+                msg: 'Reset link generated! (Demo mode - email service limited)',
+                demoLink: resetUrl // Only for demo/hackathon
+            });
         }
     } catch (err) {
         console.error(err.message);

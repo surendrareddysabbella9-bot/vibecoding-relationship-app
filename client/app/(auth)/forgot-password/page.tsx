@@ -10,16 +10,22 @@ export default function ForgotPassword() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [emailSent, setEmailSent] = useState(false);
+    const [demoLink, setDemoLink] = useState('');
 
     const onSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setMessage('');
+        setDemoLink('');
         setLoading(true);
         try {
             const res = await api.post('/auth/forgot-password', { email });
             setMessage(res.data.msg || 'If an account exists with this email, you will receive a password reset link.');
             setEmailSent(true);
+            // For demo mode when email service is limited
+            if (res.data.demoLink) {
+                setDemoLink(res.data.demoLink);
+            }
         } catch (err: any) {
             setError(err.response?.data?.msg || 'Failed to send email. Please try again.');
         }
@@ -39,14 +45,32 @@ export default function ForgotPassword() {
                 </div>
 
                 {emailSent ? (
-                    <div className="text-center py-8">
+                    <div className="text-center py-6">
                         <div className="text-5xl mb-4">📧</div>
-                        <h3 className="text-xl font-bold text-gray-800 mb-2">Check Your Email!</h3>
-                        <p className="text-gray-600 mb-6">
-                            We've sent a password reset link to <strong>{email}</strong>
+                        <h3 className="text-xl font-bold text-gray-800 mb-2">
+                            {demoLink ? 'Reset Link Ready!' : 'Check Your Email!'}
+                        </h3>
+                        <p className="text-gray-600 mb-4">
+                            {demoLink
+                                ? 'Click the button below to reset your password.'
+                                : <>We've sent a password reset link to <strong>{email}</strong></>
+                            }
                         </p>
-                        <p className="text-sm text-gray-500 mb-6">
-                            The link will expire in 10 minutes. Check your spam folder if you don't see it.
+
+                        {demoLink && (
+                            <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-200 mb-4">
+                                <p className="text-xs text-indigo-500 mb-2 font-medium">🔧 Demo Mode</p>
+                                <Link
+                                    href={demoLink.replace(process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || '', '')}
+                                    className="inline-block bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-6 py-2 rounded-lg font-bold text-sm hover:from-indigo-600 hover:to-purple-700 shadow-lg"
+                                >
+                                    Reset Password Now
+                                </Link>
+                            </div>
+                        )}
+
+                        <p className="text-sm text-gray-500 mb-4">
+                            The link will expire in 10 minutes.
                         </p>
                         <Link href="/login" className="text-indigo-600 font-bold hover:underline">
                             ← Back to Login
