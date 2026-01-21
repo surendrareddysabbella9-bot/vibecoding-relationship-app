@@ -30,6 +30,12 @@ interface PartnerStatus {
     lastMoodUpdate?: string;
 }
 
+interface Stats {
+    totalMemories: number;
+    streak: number;
+    avgRating: number;
+}
+
 interface Response {
     userId: { _id: string, name: string } | string;
     text: string;
@@ -64,6 +70,7 @@ export default function Dashboard() {
 
     // Core Data
     const [task, setTask] = useState<Task | null>(null);
+    const [stats, setStats] = useState<Stats>({ totalMemories: 0, streak: 0, avgRating: 0 });
     const [history, setHistory] = useState<Task[]>([]);
 
     // UI States
@@ -111,6 +118,7 @@ export default function Dashboard() {
                 fetchDailyTask(res.data);
                 fetchHistory(); // Fetch sidebar data
                 fetchPartnerStatus(); // Fetch partner info
+                fetchStats(); // Fetch engagement stats
             }
         } catch {
             localStorage.removeItem('token');
@@ -151,6 +159,15 @@ export default function Dashboard() {
             setHistory(res.data.slice(0, 5));
         } catch (err) {
             console.error("Failed to fetch history", err);
+        }
+    };
+
+    const fetchStats = async () => {
+        try {
+            const res = await api.get('/tasks/stats');
+            setStats(res.data);
+        } catch (err) {
+            console.error("Failed to fetch stats", err);
         }
     };
 
@@ -423,11 +440,18 @@ export default function Dashboard() {
                                                                 ))}
                                                             </div>
                                                             {rating > 0 && (
-                                                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="w-full">
+                                                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="w-full space-y-3">
+                                                                    <input
+                                                                        type="text"
+                                                                        value={comment}
+                                                                        onChange={(e) => setComment(e.target.value)}
+                                                                        placeholder="Add a quick note (optional but helps us personalize!)"
+                                                                        className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-white/40 text-sm outline-none focus:border-white/40 transition-colors"
+                                                                    />
                                                                     <button
                                                                         onClick={submitFeedback}
                                                                         disabled={submittingFeedback}
-                                                                        className="mt-2 bg-white text-indigo-900 px-6 py-2 rounded-lg font-bold text-sm hover:bg-gray-100 transition-colors shadow-lg"
+                                                                        className="bg-white text-indigo-900 px-6 py-2 rounded-lg font-bold text-sm hover:bg-gray-100 transition-colors shadow-lg"
                                                                     >
                                                                         {submittingFeedback ? 'Saving...' : 'Save Feedback'}
                                                                     </button>
@@ -571,6 +595,27 @@ export default function Dashboard() {
                                                 <p className="text-xs text-gray-500 italic">{partnerStatus.name || 'Partner'} has hidden their mood.</p>
                                             </div>
                                         )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* ENGAGEMENT STATS */}
+                            {user.partnerId && (
+                                <div className="mt-4 pt-4 border-t border-gray-100">
+                                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Your Journey</h3>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-3 rounded-xl text-center border border-orange-100">
+                                            <span className="text-2xl font-extrabold text-orange-600">{stats.streak}</span>
+                                            <p className="text-[10px] font-bold text-orange-500 uppercase">🔥 Streak</p>
+                                        </div>
+                                        <div className="bg-gradient-to-br from-indigo-50 to-violet-50 p-3 rounded-xl text-center border border-indigo-100">
+                                            <span className="text-2xl font-extrabold text-indigo-600">{stats.totalMemories}</span>
+                                            <p className="text-[10px] font-bold text-indigo-500 uppercase">💜 Memories</p>
+                                        </div>
+                                        <div className="bg-gradient-to-br from-rose-50 to-pink-50 p-3 rounded-xl text-center border border-rose-100">
+                                            <span className="text-2xl font-extrabold text-rose-600">{stats.avgRating || '-'}</span>
+                                            <p className="text-[10px] font-bold text-rose-500 uppercase">❤️ Avg</p>
+                                        </div>
                                     </div>
                                 </div>
                             )}

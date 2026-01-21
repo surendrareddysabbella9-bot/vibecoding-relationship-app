@@ -26,7 +26,8 @@ router.get('/history', auth, async (req, res) => {
             status: 'completed'
         })
             .sort({ date: -1 })
-            .populate('feedback.userId', 'name');
+            .populate('feedback.userId', 'name')
+            .populate('responses.userId', 'name');
 
         res.json(tasks);
 
@@ -47,6 +48,8 @@ router.get('/daily', auth, async (req, res) => {
             return res.status(400).json({ msg: 'No partner connected. Please connect with your partner first.' });
         }
 
+        const partner = await User.findById(user.partnerId);
+
         // Find users in the relationship
         const partnerIds = [user.id, user.partnerId].sort();
 
@@ -66,14 +69,14 @@ router.get('/daily', auth, async (req, res) => {
 
         // --- AI GENERATION WITH FEEDBACK HISTORY ---
 
-        // 1. Fetch relevant history (last 5 completed tasks with feedback)
+        // 1. Fetch relevant history (last 5 completed tasks with feedback + responses)
         const historyTasks = await Task.find({
             coupleIds: { $all: partnerIds },
             status: 'completed'
         })
             .sort({ date: -1 })
             .limit(5)
-            .select('title category feedback');
+            .select('title category feedback responses');
 
         // 2. Format history for the prompt
         let historyContext = "No previous history.";
@@ -85,18 +88,47 @@ router.get('/daily', auth, async (req, res) => {
             }).join('\n');
         }
 
-        // 3. Get Onboarding Data (Preferences)
-        // Since we fetched 'user', we have one partner's data. Ideally we fetch both.
-        // For MVP, we'll try to use the current user's onboarding data if available.
-        let preferencesContext = "No specific preferences.";
-        if (user.onboardingData) {
-            const { communicationStyle, loveLanguage, interests } = user.onboardingData;
-            preferencesContext = `
-            - Communication Style: ${communicationStyle || 'Unknown'}
-            - Love Language: ${loveLanguage || 'Unknown'}
-            - Interests: ${interests && interests.length > 0 ? interests.join(', ') : 'Unknown'}
-            `;
+        // 3. Simple Sentiment Analysis from recent responses
+        let sentimentContext = "No recent responses to analyze.";
+        const allResponses = historyTasks.flatMap(t => t.responses || []).slice(0, 10);
+        if (allResponses.length > 0) {
+            const responseTexts = allResponses.map(r => r.text).join(' ').toLowerCase();
+            // Simple keyword-based sentiment detection
+            const positiveWords = ['love', 'happy', 'excited', 'grateful', 'amazing', 'wonderful', 'great', 'best', 'joy', 'fun'];
+            const negativeWords = ['sad', 'stressed', 'tired', 'angry', 'frustrated', 'worried', 'anxious', 'difficult', 'hard', 'miss'];
+            const positiveCount = positiveWords.filter(w => responseTexts.includes(w)).length;
+            const negativeCount = negativeWords.filter(w => responseTexts.includes(w)).length;
+
+            if (positiveCount > negativeCount) {
+                sentimentContext = "Recent responses show POSITIVE emotional tone. The couple seems happy and engaged.";
+            } else if (negativeCount > positiveCount) {
+                sentimentContext = "Recent responses show STRESSED/NEGATIVE emotional tone. Consider lighter, supportive prompts.";
+            } else {
+                sentimentContext = "Recent responses show NEUTRAL emotional tone.";
+            }
         }
+
+        // 4. Get Onboarding Data (Preferences) for BOTH partners
+        let preferencesContext = "No specific preferences.";
+        const prefs = [];
+        if (user.onboardingData) {
+            prefs.push(`Partner 1: Communication=${user.onboardingData.communicationStyle || 'Unknown'}, Love Language=${user.onboardingData.loveLanguage || 'Unknown'}, Interests=${(user.onboardingData.interests || []).join(', ') || 'Unknown'}`);
+        }
+        if (partner && partner.onboardingData) {
+            prefs.push(`Partner 2: Communication=${partner.onboardingData.communicationStyle || 'Unknown'}, Love Language=${partner.onboardingData.loveLanguage || 'Unknown'}, Interests=${(partner.onboardingData.interests || []).join(', ') || 'Unknown'}`);
+        }
+        if (prefs.length > 0) preferencesContext = prefs.join('\n');
+
+        // 5. Current Mood & Intensity Context
+        let moodContext = "Mood data not available.";
+        const moods = [];
+        if (user.currentMood) moods.push(`Partner 1: ${user.currentMood} (Intensity: ${user.taskIntensity || 2}/3)`);
+        if (partner && partner.currentMood && partner.moodPrivacy) moods.push(`Partner 2: ${partner.currentMood} (Intensity: ${partner.taskIntensity || 2}/3)`);
+        if (moods.length > 0) moodContext = moods.join(', ');
+
+        // Calculate target intensity (average of both partners)
+        const avgIntensity = Math.round(((user.taskIntensity || 2) + (partner?.taskIntensity || 2)) / 2);
+        const intensityLabel = avgIntensity === 1 ? 'LIGHT/CASUAL' : avgIntensity === 3 ? 'DEEP/INTIMATE' : 'BALANCED';
 
         // If no task, generate one using Gemini
         let aiResponse = {
@@ -108,19 +140,29 @@ router.get('/daily', auth, async (req, res) => {
         if (process.env.GEMINI_API_KEY) {
             try {
                 const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-                const prompt = `Generate one simple, engaging daily activity for a couple to do today to strengthen their relationship. 
+                const prompt = `Generate a single daily 'connection prompt' for a couple. 
+                They will answer this prompt individually in the app, and then reveal their answers to each other.
                 
-                Couple's Helper Context (Onboarding):
+                === COUPLE PROFILE ===
                 ${preferencesContext}
 
-                Couple's Activity History & Feedback:
+                === CURRENT EMOTIONAL STATE ===
+                ${moodContext}
+                Sentiment from recent responses: ${sentimentContext}
+                
+                === DESIRED INTENSITY: ${intensityLabel} (${avgIntensity}/3) ===
+
+                === ACTIVITY HISTORY & FEEDBACK ===
                 ${historyContext}
                 
-                Instructions:
-                - TAILOR the task to their Love Language and Interests if possible.
-                - Analyze the feedback. If ratings are low, try a different category. If high, do similar but new things.
-                - Avoid repeating previous tasks.
-                - Response must be strictly JSON with keys: title, description, category.`;
+                === INSTRUCTIONS ===
+                - Create a prompt appropriate for the ${intensityLabel} intensity level.
+                - If mood is stressed/tired, suggest lighter, comforting prompts.
+                - If mood is happy/romantic, feel free to be more playful or deep.
+                - TAILOR the prompt to their Love Languages and Interests.
+                - Analyze feedback ratings. If ratings are low for a category, try a different one.
+                - DO NOT repeat previous task titles.
+                - Response must be strictly JSON with keys: title, description (the framing/question), category.`;
 
                 const result = await model.generateContent(prompt);
                 const response = await result.response;
@@ -251,4 +293,76 @@ router.post('/:id/feedback', auth, async (req, res) => {
     }
 });
 
+// @route   GET api/tasks/stats
+// @desc    Get engagement statistics for the couple
+// @access  Private
+router.get('/stats', auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user.partnerId) {
+            return res.json({ totalMemories: 0, streak: 0, avgRating: 0 });
+        }
+
+        const partnerIds = [user.id, user.partnerId].sort();
+
+        // Get all completed tasks
+        const completedTasks = await Task.find({
+            coupleIds: { $all: partnerIds },
+            status: 'completed'
+        }).sort({ date: -1 });
+
+        const totalMemories = completedTasks.length;
+
+        // Calculate average rating
+        let totalRatings = 0;
+        let ratingCount = 0;
+        completedTasks.forEach(t => {
+            t.feedback.forEach(f => {
+                totalRatings += f.rating;
+                ratingCount++;
+            });
+        });
+        const avgRating = ratingCount > 0 ? (totalRatings / ratingCount).toFixed(1) : 0;
+
+        // Calculate streak (consecutive days with completed tasks)
+        let streak = 0;
+        if (completedTasks.length > 0) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // Check if there's a task for today or yesterday that's completed (streak continues)
+            let checkDate = new Date(today);
+
+            for (let i = 0; i < completedTasks.length; i++) {
+                const taskDate = new Date(completedTasks[i].date);
+                taskDate.setHours(0, 0, 0, 0);
+
+                // Calculate day difference
+                const diffTime = checkDate.getTime() - taskDate.getTime();
+                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diffDays <= 1) {
+                    streak++;
+                    checkDate = taskDate;
+                    // Move check date back by 1 day for next iteration
+                    checkDate.setDate(checkDate.getDate() - 1);
+                } else {
+                    break; // Streak broken
+                }
+            }
+        }
+
+        res.json({
+            totalMemories,
+            streak,
+            avgRating: parseFloat(avgRating)
+        });
+
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
+    }
+});
+
 module.exports = router;
+

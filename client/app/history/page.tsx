@@ -18,6 +18,11 @@ interface Task {
         rating: number;
         comment: string;
     }[];
+    responses?: {
+        userId: { _id: string; name: string } | string;
+        text: string;
+        date: string;
+    }[];
 }
 
 export default function History() {
@@ -92,7 +97,7 @@ export default function History() {
                                 <div className="absolute -left-[3.25rem] top-1/2 -translate-y-1/2 w-6 h-6 bg-white border-4 border-rose-400 rounded-full hidden md:block z-10 shadow-md"></div>
 
                                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                                    <div>
+                                    <div className="flex-1">
                                         <div className="flex items-center gap-3 mb-2">
                                             <span className="text-xs font-bold font-mono text-indigo-500 bg-indigo-50 px-2 py-1 rounded-md uppercase tracking-wider">
                                                 {new Date(task.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
@@ -104,11 +109,25 @@ export default function History() {
                                             )}
                                         </div>
                                         <h3 className="text-xl font-bold text-gray-800">{task.title}</h3>
-                                        <p className="text-gray-600 mt-1 text-sm">{task.description}</p>
+                                        <p className="text-gray-600 mt-1 text-sm mb-4">{task.description}</p>
+
+                                        {/* Responses / Conversation */}
+                                        {task.responses && task.responses.length > 0 && (
+                                            <div className="bg-indigo-50/50 rounded-xl p-4 border border-indigo-100/50 space-y-3">
+                                                {task.responses.map((response, i) => (
+                                                    <div key={i} className="bg-white p-3 rounded-lg shadow-sm border border-indigo-50">
+                                                        <span className="text-xs font-bold text-indigo-600 block mb-1">
+                                                            {typeof response.userId === 'object' && 'name' in response.userId ? response.userId.name : 'User'}
+                                                        </span>
+                                                        <p className="text-gray-700 text-sm leading-relaxed">{response.text}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
 
-                                    {/* Average Rating Display */}
-                                    <div className="flex -space-x-2">
+                                    {/* Average Rating Display & Feedback */}
+                                    <div className="flex flex-col items-end space-y-2">
                                         {task.feedback && task.feedback.length > 0 && (
                                             <div className="bg-yellow-50 px-3 py-1 rounded-full border border-yellow-200 text-yellow-700 text-sm font-bold flex items-center gap-1">
                                                 <span>⭐</span>
