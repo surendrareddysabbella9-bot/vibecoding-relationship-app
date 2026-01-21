@@ -251,6 +251,9 @@ export default function Dashboard() {
         try {
             await api.post(`/tasks/${task._id}/feedback`, { rating, comment });
             setHasGivenFeedback(true);
+            // Refresh stats and history dynamically
+            fetchStats(user._id);
+            fetchHistory();
         } catch (err) {
             console.error("Failed to submit feedback", err);
         }
