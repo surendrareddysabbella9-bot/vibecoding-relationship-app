@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 
+export const dynamic = 'force-dynamic';
+
 function LoginForm() {
     const [formData, setFormData] = useState({
         email: '',
