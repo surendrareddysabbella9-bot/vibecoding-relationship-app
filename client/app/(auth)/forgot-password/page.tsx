@@ -61,7 +61,7 @@ export default function ForgotPassword() {
                             <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-200 mb-4">
                                 <p className="text-xs text-indigo-500 mb-2 font-medium">🔧 Demo Mode</p>
                                 <Link
-                                    href={demoLink.replace(process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || '', '')}
+                                    href={demoLink.includes('/reset-password/') ? `/reset-password/${demoLink.split('/reset-password/')[1]}` : demoLink}
                                     className="inline-block bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-6 py-2 rounded-lg font-bold text-sm hover:from-indigo-600 hover:to-purple-700 shadow-lg"
                                 >
                                     Reset Password Now
