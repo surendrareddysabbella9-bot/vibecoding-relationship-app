@@ -143,12 +143,15 @@ router.put('/onboarding', auth, async (req, res) => {
 // @desc    Update user current mood
 // @access  Private
 router.put('/mood', auth, async (req, res) => {
-    const { mood } = req.body;
+    const { mood, intensity, privacy } = req.body;
 
     try {
         let user = await User.findById(req.user.id);
         if (user) {
-            user.currentMood = mood;
+            if (mood) user.currentMood = mood;
+            if (intensity) user.taskIntensity = intensity;
+            if (privacy !== undefined) user.moodPrivacy = privacy;
+
             user.lastMoodUpdate = Date.now();
             await user.save();
             return res.json(user);

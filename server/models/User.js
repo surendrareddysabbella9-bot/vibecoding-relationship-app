@@ -39,6 +39,14 @@ const UserSchema = new mongoose.Schema({
     },
     lastMoodUpdate: {
         type: Date
+    },
+    taskIntensity: {
+        type: Number,
+        default: 2 // 1: Chill, 2: Balanced, 3: Deep
+    },
+    moodPrivacy: {
+        type: Boolean,
+        default: true // true = shared, false = private
     }
 });
 

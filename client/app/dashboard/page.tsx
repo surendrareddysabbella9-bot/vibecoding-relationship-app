@@ -14,6 +14,8 @@ interface User {
     partnerLinkCode: string;
     partnerId?: string;
     currentMood?: string;
+    taskIntensity?: number;
+    moodPrivacy?: boolean;
     onboardingData?: {
         communicationStyle: string;
     };
@@ -25,8 +27,11 @@ interface Task {
     description: string;
     category?: string;
     status: string;
-    userRating?: number;
-    userComment?: string;
+    feedback?: {
+        userId: string;
+        rating: number;
+        comment: string;
+    }[];
 }
 
 const MOODS = ['Happy', 'Stressed', 'Tired', 'Romantic', 'Chill'];
@@ -46,6 +51,10 @@ export default function Dashboard() {
     const [hasGivenFeedback, setHasGivenFeedback] = useState(false);
     const [submittingMood, setSubmittingMood] = useState(false);
 
+    // New State for Bonus Features
+    const [intensity, setIntensity] = useState(2); // 1, 2, 3
+    const [shareMood, setShareMood] = useState(true);
+
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (!token) {
@@ -63,8 +72,13 @@ export default function Dashboard() {
                 return;
             }
             setUser(res.data);
+
+            // Initialize UI controls from user data
+            if (res.data.taskIntensity) setIntensity(res.data.taskIntensity);
+            if (res.data.moodPrivacy !== undefined) setShareMood(res.data.moodPrivacy);
+
             if (res.data.partnerId) {
-                fetchDailyTask();
+                fetchDailyTask(res.data);
             }
         } catch {
             localStorage.removeItem('token');
@@ -72,13 +86,20 @@ export default function Dashboard() {
         }
     };
 
-    const fetchDailyTask = async () => {
+    const fetchDailyTask = async (currentUser: User) => {
         setLoadingTask(true);
         try {
             const res = await api.get('/tasks/daily');
             setTask(res.data);
-            if (res.data.userRating) {
-                setHasGivenFeedback(true);
+
+            // Correctly check if THIS user has given feedback
+            if (res.data.feedback && res.data.feedback.length > 0) {
+                const myFeedback = res.data.feedback.find((f: any) =>
+                    f.userId === currentUser._id || (f.userId._id && f.userId._id === currentUser._id)
+                );
+                if (myFeedback) {
+                    setHasGivenFeedback(true);
+                }
             }
         } catch (err) {
             console.error("Failed to fetch task", err);
@@ -89,18 +110,25 @@ export default function Dashboard() {
     const handleMoodSubmit = async (mood: string) => {
         setSubmittingMood(true);
         try {
-            await api.put('/auth/mood', { mood });
+            await api.put('/auth/mood', {
+                mood,
+                intensity,
+                privacy: shareMood
+            });
             setUser(prev => prev ? { ...prev, currentMood: mood } : null);
+
+            // Refresh task if needed based on new mood/intensity? 
+            // For now, simpler to just update state.
         } catch (err) {
             console.error("Failed to update mood", err);
         }
         setSubmittingMood(false);
     };
 
-    const copyLink = () => {
+    const copyCode = () => {
         if (user) {
             navigator.clipboard.writeText(user.partnerLinkCode);
-            setCopySuccess('Copied!');
+            setCopySuccess('Code Copied!');
             setTimeout(() => setCopySuccess(''), 2000);
         }
     };
@@ -119,7 +147,7 @@ export default function Dashboard() {
             });
             const userRes = await api.get('/auth/user');
             setUser(userRes.data);
-            fetchDailyTask();
+            fetchDailyTask(userRes.data);
         } catch (err: any) {
             setError(err.response?.data?.msg || 'Connection failed');
         }
@@ -170,16 +198,53 @@ export default function Dashboard() {
                 {/* VIBE CHECK SECTION */}
                 <div className="glass-card p-6 rounded-2xl shadow-xl mb-6 border-white/50">
                     <h2 className="text-2xl font-bold mb-4 gradient-text">✨ Vibe Check</h2>
-                    <div className="flex justify-between items-center mb-4">
-                        <p className="text-gray-700 font-medium">How are you feeling right now? (This helps AI pick better tasks!)</p>
-                        <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-500">Share with partner</span>
-                            <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
-                                <input type="checkbox" name="toggle" id="toggle" className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-gray-300 checked:bg-green-400 checked:border-green-400 checked:right-0 right-4" defaultChecked />
-                                <label htmlFor="toggle" className="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+
+                    <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                        <p className="text-gray-700 font-medium">How are you feeling right now?</p>
+
+                        <div className="flex items-center gap-6">
+                            {/* Privacy Toggle */}
+                            <div className="flex items-center gap-2" title="Share your mood with your partner?">
+                                <span className="text-xs text-gray-500 font-semibold uppercase tracking-wide">Share Mode</span>
+                                <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                                    <input
+                                        type="checkbox"
+                                        name="toggle"
+                                        id="toggle"
+                                        className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-gray-300 checked:bg-green-400 checked:border-green-400 checked:right-0 right-0 transform transition-transform duration-200"
+                                        checked={shareMood}
+                                        onChange={(e) => setShareMood(e.target.checked)}
+                                    />
+                                    <label htmlFor="toggle" className="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+                                </div>
                             </div>
                         </div>
                     </div>
+
+                    {/* Intensity Slider */}
+                    <div className="mb-6 bg-white/40 p-4 rounded-xl">
+                        <div className="flex justify-between items-center mb-2">
+                            <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Task Intensity</span>
+                            <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">
+                                {intensity === 1 ? 'Chill ☕' : intensity === 2 ? 'Balanced ⚖️' : 'Deep 🔥'}
+                            </span>
+                        </div>
+                        <input
+                            type="range"
+                            min="1"
+                            max="3"
+                            step="1"
+                            value={intensity}
+                            onChange={(e) => setIntensity(parseInt(e.target.value))}
+                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                        />
+                        <div className="flex justify-between text-xs text-gray-400 mt-1 font-medium">
+                            <span>Light</span>
+                            <span>Medium</span>
+                            <span>Spicy</span>
+                        </div>
+                    </div>
+
                     <div className="flex gap-4 flex-wrap">
                         {MOODS.map((m) => (
                             <motion.button
@@ -201,24 +266,26 @@ export default function Dashboard() {
                     </div>
                 </div>
 
-                <header className="glass-card p-6 rounded-2xl shadow-lg flex justify-between items-center bg-white/60">
+                <header className="glass-card p-6 rounded-2xl shadow-lg flex flex-col md:flex-row justify-between items-center bg-white/60 gap-4">
                     <div>
                         <h1 className="text-3xl font-extrabold text-gray-800 tracking-tight">Welcome, {user.name}</h1>
                         <div className="flex items-center gap-2 mt-2">
                             <p className="text-gray-600 font-medium">Partner Code: <span className="font-mono font-bold bg-white px-3 py-1 rounded-lg border border-gray-200 text-indigo-600 shadow-inner select-all">{user.partnerLinkCode}</span></p>
                             <button
-                                onClick={copyLink}
+                                onClick={copyCode}
                                 className="text-xs bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full hover:bg-indigo-200 transition-colors font-bold"
                             >
-                                {copySuccess || 'Copy Link'}
+                                {copySuccess || 'Copy Code'}
                             </button>
                         </div>
                     </div>
-                    <div className="flex flex-col items-end gap-2">
-                        <div className="flex gap-2">
-                            <button onClick={() => router.push('/history')} className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-4 py-2 rounded-lg hover:bg-indigo-100 transition-colors">📜 Timeline</button>
-                            <button onClick={() => { localStorage.removeItem('token'); router.push('/login') }} className="text-sm font-semibold text-rose-500 hover:text-rose-700 bg-rose-50 px-4 py-2 rounded-lg hover:bg-rose-100 transition-colors">Logout</button>
-                        </div>
+                    <div className="flex gap-3">
+                        <button onClick={() => router.push('/history')} className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-4 py-2 rounded-lg hover:bg-indigo-100 transition-colors shadow-sm border border-indigo-100">
+                            📜 Timeline
+                        </button>
+                        <button onClick={() => { localStorage.removeItem('token'); router.push('/login') }} className="text-sm font-semibold text-rose-500 hover:text-rose-700 bg-rose-50 px-4 py-2 rounded-lg hover:bg-rose-100 transition-colors shadow-sm border border-rose-100">
+                            Logout
+                        </button>
                     </div>
                 </header>
 
@@ -316,7 +383,7 @@ export default function Dashboard() {
                             <div className="text-4xl animate-bounce">❤️</div>
                             <div>
                                 <h3 className="font-bold text-lg">Connected!</h3>
-                                <p>You are officially pair-programmed for life (or at least for this app).</p>
+                                <p>You are officially pair-programmed for life.</p>
                             </div>
                         </div>
                     ) : (
@@ -346,6 +413,6 @@ export default function Dashboard() {
                     )}
                 </div>
             </motion.div>
-        </div >
+        </div>
     );
 }
