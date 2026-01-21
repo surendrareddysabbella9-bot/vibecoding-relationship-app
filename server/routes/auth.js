@@ -6,7 +6,7 @@ const { check, validationResult } = require('express-validator');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 const crypto = require('crypto');
-const { sendPasswordResetEmail } = require('../utils/email');
+// Email integration removed for demo mode
 
 // @route   POST api/auth/register
 // @desc    Register user
@@ -208,21 +208,13 @@ router.post('/forgot-password', async (req, res) => {
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
         const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
 
-        // Send email
-        try {
-            await sendPasswordResetEmail(email, resetUrl, user.name);
-            res.status(200).json({ success: true, msg: 'Password reset email sent! Check your inbox.' });
-        } catch (emailError) {
-            console.error('Email send error:', emailError);
-            // For hackathon demo: If email fails (domain not verified), still provide the link
-            // In production, you would verify a domain and this wouldn't be needed
-            console.log('DEMO MODE - Reset URL:', resetUrl);
-            res.status(200).json({
-                success: true,
-                msg: 'Reset link generated! (Demo mode - email service limited)',
-                demoLink: resetUrl // Only for demo/hackathon
-            });
-        }
+        // Demo mode: Return reset link directly (no email service needed for hackathon)
+        console.log('Password reset link generated for:', email);
+        res.status(200).json({
+            success: true,
+            msg: 'Reset link generated!',
+            demoLink: resetUrl
+        });
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server error');
