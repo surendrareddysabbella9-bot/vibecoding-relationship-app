@@ -73,9 +73,10 @@ export default function ForgotPassword() {
 
                         <button
                             type="submit"
-                            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-bold rounded-lg text-white bg-gradient-to-r from-rose-500 to-indigo-600 hover:from-rose-600 hover:to-indigo-700 shadow-lg"
+                            disabled={loading}
+                            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-bold rounded-lg text-white bg-gradient-to-r from-rose-500 to-indigo-600 hover:from-rose-600 hover:to-indigo-700 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Send Recovery Email
+                            {loading ? 'Sending...' : 'Send Recovery Email'}
                         </button>
 
                         <div className="text-center mt-4">

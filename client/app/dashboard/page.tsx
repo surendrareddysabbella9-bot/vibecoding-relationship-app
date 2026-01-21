@@ -357,12 +357,15 @@ export default function Dashboard() {
                                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Share Mood</span>
                                         <button
                                             type="button"
+                                            role="switch"
+                                            aria-checked={shareMood}
                                             onClick={() => togglePrivacy(!shareMood)}
-                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none ${shareMood ? 'bg-green-500' : 'bg-gray-300'
+                                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 ${shareMood ? 'bg-green-500' : 'bg-gray-300'
                                                 }`}
                                         >
                                             <span
-                                                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition-transform duration-200 ease-in-out ${shareMood ? 'translate-x-6' : 'translate-x-1'
+                                                aria-hidden="true"
+                                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${shareMood ? 'translate-x-5' : 'translate-x-0'
                                                     }`}
                                             />
                                         </button>
