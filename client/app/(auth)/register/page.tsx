@@ -20,23 +20,6 @@ export default function Register() {
     const onChange = (e: React.ChangeEvent<HTMLInputElement>) =>
         setFormData({ ...formData, [e.target.name]: e.target.value });
 
-    const checkEmail = async () => {
-        if (!email || !email.includes('@')) return;
-
-        try {
-            const res = await api.post('/auth/check-email', { email });
-            if (res.data.exists) {
-                setError('User already exists. Please login instead.');
-            } else {
-                if (error === 'User already exists. Please login instead.') {
-                    setError('');
-                }
-            }
-        } catch (err) {
-            console.error('Email check failed', err);
-        }
-    };
-
     const onSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -45,10 +28,13 @@ export default function Register() {
             // Don't auto-login, force variable verification
             router.push('/login?registered=true');
         } catch (err: any) {
-            if (err.response?.data?.errors) {
+            const msg = err.response?.data?.msg;
+            if (msg === 'User already exists') {
+                setError('User already exists. Please login instead.');
+            } else if (err.response?.data?.errors) {
                 setError(err.response.data.errors[0].msg);
             } else {
-                setError(err.response?.data?.msg || 'Registration failed');
+                setError(msg || 'Registration failed');
             }
         }
     };
@@ -99,7 +85,6 @@ export default function Register() {
                                 placeholder="name@example.com"
                                 value={email}
                                 onChange={onChange}
-                                onBlur={checkEmail}
                             />
                         </div>
                         <div>
