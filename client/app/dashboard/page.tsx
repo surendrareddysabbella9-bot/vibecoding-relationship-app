@@ -14,6 +14,9 @@ interface User {
     partnerLinkCode: string;
     partnerId?: string;
     currentMood?: string;
+    onboardingData?: {
+        communicationStyle: string;
+    };
 }
 
 interface Task {
@@ -55,6 +58,10 @@ export default function Dashboard() {
     const fetchUser = async () => {
         try {
             const res = await api.get('/auth/user');
+            if (!res.data.onboardingData || !res.data.onboardingData.communicationStyle) {
+                router.push('/onboarding');
+                return;
+            }
             setUser(res.data);
             if (res.data.partnerId) {
                 fetchDailyTask();

@@ -26,7 +26,7 @@ export default function Register() {
         try {
             const res = await api.post('/auth/register', formData);
             localStorage.setItem('token', res.data.token);
-            router.push('/dashboard');
+            router.push('/onboarding');
         } catch (err: any) {
             if (err.response?.data?.errors) {
                 setError(err.response.data.errors[0].msg);

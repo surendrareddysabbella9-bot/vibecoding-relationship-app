@@ -25,7 +25,11 @@ export default function Login() {
         try {
             const res = await api.post('/auth/login', formData);
             localStorage.setItem('token', res.data.token);
-            router.push('/dashboard');
+            if (res.data.user && (!res.data.user.onboardingData || !res.data.user.onboardingData.communicationStyle)) {
+                router.push('/onboarding');
+            } else {
+                router.push('/dashboard');
+            }
         } catch (err: any) {
             if (err.response?.data?.errors) {
                 setError(err.response.data.errors[0].msg);
