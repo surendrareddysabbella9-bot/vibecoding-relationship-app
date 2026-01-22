@@ -194,159 +194,159 @@ export default function Chat({ user, connected, isOpen, onToggle }: { user: any,
         exit: { opacity: 0, x: 50, scale: 0.95, transition: { duration: 0.2 } }
     };
 
-    // If open but not connected, show a prompt
-    if (isOpen && !connected) {
-        return createPortal(
-            <div className="fixed top-24 bottom-6 right-6 z-[100] flex flex-col justify-end pointer-events-none">
-                <motion.div
-                    variants={panelVariants}
-                    initial="hidden"
-                    animate="visible"
-                    exit="exit"
-                    className="w-full md:w-[400px] h-full bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-white/20 pointer-events-auto flex flex-col relative overflow-hidden ring-1 ring-black/5"
-                >
-                    <button
-                        onClick={() => onToggle(false)}
-                        className="absolute top-4 right-4 p-2 bg-gray-50 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors z-10"
-                    >
-                        <X size={20} />
-                    </button>
 
-                    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-gradient-to-b from-white to-slate-50">
-                        <div className="bg-gradient-to-tr from-rose-100 to-rose-50 w-24 h-24 rounded-full flex items-center justify-center mb-6 text-rose-500 shadow-sm shadow-rose-100">
-                            <MessageSquare size={40} />
-                        </div>
-                        <h3 className="font-bold text-2xl text-gray-800 mb-2">Private Connection</h3>
-                        <p className="text-gray-500 mb-8 leading-relaxed text-sm px-4">
-                            Link your accounts to unlock the specialized couple's chat room.
-                            <br />
-                            <span className="text-xs font-medium text-indigo-500 mt-4 block bg-indigo-50 py-2 px-4 rounded-full inline-block">
-                                Waiting for partner sync...
-                            </span>
-                        </p>
-                        <button
-                            onClick={() => onToggle(false)}
-                            className="bg-gray-900 text-white px-8 py-3 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-all shadow-lg shadow-gray-200 active:scale-95"
-                        >
-                            Close Panel
-                        </button>
-                    </div>
-                </motion.div>
-            </div>,
-            document.body
-        );
-    }
 
     return createPortal(
-        <div className="fixed top-24 bottom-6 right-6 z-[100] flex flex-col pointer-events-none font-sans">
-            <AnimatePresence>
+        <div className="z-[9999]">
+            <AnimatePresence mode="wait">
                 {isOpen && (
                     <motion.div
-                        variants={panelVariants}
-                        initial="hidden"
-                        animate="visible"
-                        exit="exit"
-                        className="w-full md:w-[400px] h-full bg-slate-50 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.15)] border border-white/40 pointer-events-auto flex flex-col overflow-hidden ring-1 ring-black/5 backdrop-blur-3xl"
+                        className="fixed top-24 bottom-6 right-6 z-[9999] flex flex-col justify-end pointer-events-none"
                     >
-                        {/* Header */}
-                        <div className="bg-white/80 backdrop-blur-md p-4 flex justify-between items-center z-10 border-b border-gray-100">
-                            <div className="flex items-center gap-3">
-                                <div className="relative">
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-md ${partnerOnline ? 'bg-gradient-to-r from-emerald-400 to-teal-500' : 'bg-gradient-to-r from-gray-400 to-gray-500'}`}>
-                                        <MessageSquare size={20} />
-                                    </div>
-                                    {partnerOnline && (
-                                        <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
-                                    )}
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-gray-800">Our Vibe Room</h3>
-                                    <p className={`text-xs font-medium ${partnerOnline ? 'text-emerald-500' : 'text-gray-400'}`}>
-                                        {partnerOnline ? 'Partner is Online' : 'Partner is Offline'}
-                                    </p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => onToggle(false)}
-                                className="p-2 bg-gray-50 text-gray-400 rounded-full hover:bg-gray-100 hover:text-gray-600 transition-colors"
-                            >
-                                <X size={20} />
-                            </button>
-                        </div>
+                        <motion.div
+                            variants={panelVariants}
+                            initial="hidden"
+                            animate="visible"
+                            exit="exit"
+                            className={`w-full md:w-[400px] h-full pointer-events-auto flex flex-col relative overflow-hidden ring-1 ring-black/5 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.15)] ${!connected ? 'bg-white border-white/20' : 'bg-slate-50 border-white/40 backdrop-blur-md'}`}
+                        >
+                            {/* !CONNECTED STATE: PROMPT */}
+                            {!connected && (
+                                <>
+                                    <button
+                                        onClick={() => onToggle(false)}
+                                        className="absolute top-4 right-4 p-2 bg-gray-50 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors z-10"
+                                    >
+                                        <X size={20} />
+                                    </button>
 
-                        {/* Messages Area */}
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
-                            {messages.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 space-y-3">
-                                    <div className="bg-indigo-50 p-4 rounded-full">
-                                        <MessageSquare size={32} className="text-indigo-300" />
+                                    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-gradient-to-b from-white to-slate-50">
+                                        <div className="bg-gradient-to-tr from-rose-100 to-rose-50 w-24 h-24 rounded-full flex items-center justify-center mb-6 text-rose-500 shadow-sm shadow-rose-100">
+                                            <MessageSquare size={40} />
+                                        </div>
+                                        <h3 className="font-bold text-2xl text-gray-800 mb-2">Private Connection</h3>
+                                        <p className="text-gray-500 mb-8 leading-relaxed text-sm px-4">
+                                            Link your accounts to unlock the specialized couple's chat room.
+                                            <br />
+                                            <span className="text-xs font-medium text-indigo-500 mt-4 block bg-indigo-50 py-2 px-4 rounded-full inline-block">
+                                                Waiting for partner sync...
+                                            </span>
+                                        </p>
+                                        <button
+                                            onClick={() => onToggle(false)}
+                                            className="bg-gray-900 text-white px-8 py-3 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-all shadow-lg shadow-gray-200 active:scale-95"
+                                        >
+                                            Close Panel
+                                        </button>
                                     </div>
-                                    <div>
-                                        <p className="text-sm font-bold text-gray-700">No messages yet</p>
-                                        <p className="text-xs text-gray-400 max-w-[200px] mx-auto mt-1">Send a message to start your private conversation!</p>
-                                    </div>
-                                </div>
-                            ) : (
-                                messages.map((msg, index) => {
-                                    const isMe = (typeof msg.sender === 'string' ? msg.sender : msg.sender._id) === user._id;
-                                    return (
-                                        <div key={index} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-                                            <div
-                                                className={`max-w-[75%] p-3 rounded-2xl text-sm shadow-sm relative group ${isMe
-                                                    ? "bg-indigo-600 text-white rounded-br-none"
-                                                    : "bg-white text-gray-800 border border-gray-100 rounded-bl-none"
-                                                    }`}
-                                            >
-                                                {!isMe && (
-                                                    <p className="text-[10px] font-bold text-indigo-500 mb-1 opacity-70 uppercase tracking-wider">
-                                                        {typeof msg.sender === 'object' ? msg.sender.name : 'Partner'}
-                                                    </p>
+                                </>
+                            )}
+
+                            {/* CONNECTED STATE: CHAT */}
+                            {connected && (
+                                <>
+                                    {/* Header */}
+                                    <div className="bg-white/80 backdrop-blur-md p-4 flex justify-between items-center z-10 border-b border-gray-100">
+                                        <div className="flex items-center gap-3">
+                                            <div className="relative">
+                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-md ${partnerOnline ? 'bg-gradient-to-r from-emerald-400 to-teal-500' : 'bg-gradient-to-r from-gray-400 to-gray-500'}`}>
+                                                    <MessageSquare size={20} />
+                                                </div>
+                                                {partnerOnline && (
+                                                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
                                                 )}
-                                                <p className="leading-relaxed">{msg.text}</p>
-                                                <p className={`text-[9px] mt-1 ${isMe ? "text-indigo-200" : "text-gray-400"} text-right`}>
-                                                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-gray-800">Our Vibe Room</h3>
+                                                <p className={`text-xs font-medium ${partnerOnline ? 'text-emerald-500' : 'text-gray-400'}`}>
+                                                    {partnerOnline ? 'Partner is Online' : 'Partner is Offline'}
                                                 </p>
                                             </div>
                                         </div>
-                                    );
-                                })
-                            )}
-                            {isTyping && (
-                                <div className="flex justify-start">
-                                    <div className="bg-white border border-gray-100 rounded-2xl rounded-bl-none p-4 shadow-sm">
-                                        <div className="flex space-x-1.5">
-                                            <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce"></div>
-                                            <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                                            <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                                        </div>
+                                        <button
+                                            onClick={() => onToggle(false)}
+                                            className="p-2 bg-gray-50 text-gray-400 rounded-full hover:bg-gray-100 hover:text-gray-600 transition-colors"
+                                        >
+                                            <X size={20} />
+                                        </button>
                                     </div>
-                                </div>
-                            )}
-                            <div ref={messagesEndRef} />
-                        </div>
 
-                        {/* Input Area */}
-                        <div className="p-3 bg-white border-t border-gray-100 flex gap-2 shadow-sm z-10">
-                            <input
-                                type="text"
-                                value={currentMessage}
-                                onChange={(event) => {
-                                    setCurrentMessage(event.target.value);
-                                    handleTyping();
-                                }}
-                                onKeyPress={(event) => event.key === "Enter" && sendMessage()}
-                                onBlur={handleStopTyping}
-                                placeholder="Type a message..."
-                                className="flex-1 bg-gray-50 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all border border-gray-100 focus:border-indigo-300 placeholder-gray-400 text-gray-700"
-                            />
-                            <button
-                                onClick={sendMessage}
-                                disabled={!currentMessage.trim()}
-                                className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white p-3 rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transform active:scale-95 duration-200 flex items-center justify-center aspect-square"
-                            >
-                                <Send size={18} />
-                            </button>
-                        </div>
+                                    {/* Messages Area */}
+                                    <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
+                                        {messages.length === 0 ? (
+                                            <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 space-y-3">
+                                                <div className="bg-indigo-50 p-4 rounded-full">
+                                                    <MessageSquare size={32} className="text-indigo-300" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-gray-700">No messages yet</p>
+                                                    <p className="text-xs text-gray-400 max-w-[200px] mx-auto mt-1">Send a message to start your private conversation!</p>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            messages.map((msg, index) => {
+                                                const isMe = (typeof msg.sender === 'string' ? msg.sender : msg.sender._id) === user._id;
+                                                return (
+                                                    <div key={index} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
+                                                        <div
+                                                            className={`max-w-[75%] p-3 rounded-2xl text-sm shadow-sm relative group ${isMe
+                                                                ? "bg-indigo-600 text-white rounded-br-none"
+                                                                : "bg-white text-gray-800 border border-gray-100 rounded-bl-none"
+                                                                }`}
+                                                        >
+                                                            {!isMe && (
+                                                                <p className="text-[10px] font-bold text-indigo-500 mb-1 opacity-70 uppercase tracking-wider">
+                                                                    {typeof msg.sender === 'object' ? msg.sender.name : 'Partner'}
+                                                                </p>
+                                                            )}
+                                                            <p className="leading-relaxed">{msg.text}</p>
+                                                            <p className={`text-[9px] mt-1 ${isMe ? "text-indigo-200" : "text-gray-400"} text-right`}>
+                                                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })
+                                        )}
+                                        {isTyping && (
+                                            <div className="flex justify-start">
+                                                <div className="bg-white border border-gray-100 rounded-2xl rounded-bl-none p-4 shadow-sm">
+                                                    <div className="flex space-x-1.5">
+                                                        <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce"></div>
+                                                        <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                                                        <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div ref={messagesEndRef} />
+                                    </div>
+
+                                    {/* Input Area */}
+                                    <div className="p-3 bg-white border-t border-gray-100 flex gap-2 shadow-sm z-10">
+                                        <input
+                                            type="text"
+                                            value={currentMessage}
+                                            onChange={(event) => {
+                                                setCurrentMessage(event.target.value);
+                                                handleTyping();
+                                            }}
+                                            onKeyPress={(event) => event.key === "Enter" && sendMessage()}
+                                            onBlur={handleStopTyping}
+                                            placeholder="Type a message..."
+                                            className="flex-1 bg-gray-50 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all border border-gray-100 focus:border-indigo-300 placeholder-gray-400 text-gray-700"
+                                        />
+                                        <button
+                                            onClick={sendMessage}
+                                            disabled={!currentMessage.trim()}
+                                            className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white p-3 rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transform active:scale-95 duration-200 flex items-center justify-center aspect-square"
+                                        >
+                                            <Send size={18} />
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>

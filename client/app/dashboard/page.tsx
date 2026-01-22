@@ -502,13 +502,10 @@ export default function Dashboard() {
                         <span>📜</span>
                         <span className="hidden md:inline">Timeline</span>
                     </Link>
-                    <button
-                        onClick={() => setIsChatOpen(!isChatOpen)}
-                        className="flex items-center gap-2 bg-pink-50 hover:bg-pink-100 text-pink-600 px-4 py-2 rounded-full font-bold transition-colors text-sm"
-                    >
+                    <Link href="/chat" className="flex items-center gap-2 bg-pink-50 hover:bg-pink-100 text-pink-600 px-4 py-2 rounded-full font-bold transition-colors text-sm">
                         <span>💬</span>
                         <span className="hidden md:inline">Chat</span>
-                    </button>
+                    </Link>
                     <button
                         onClick={() => { localStorage.removeItem('token'); router.push('/login') }}
                         className="bg-rose-50 hover:bg-rose-100 text-rose-500 px-4 py-2 rounded-full font-bold transition-colors text-sm"
@@ -964,12 +961,7 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            <Chat
-                user={user}
-                connected={!!user.partnerId}
-                isOpen={isChatOpen}
-                onToggle={setIsChatOpen}
-            />
+
 
         </div>
     );
