@@ -166,6 +166,22 @@ router.put('/mood', auth, async (req, res) => {
 
             user.lastMoodUpdate = Date.now();
             await user.save();
+
+            // Emit mood update to partner via Socket.io
+            if (user.partnerId) {
+                const io = req.app.get('io');
+                const coupleRoom = [user._id.toString(), user.partnerId.toString()].sort().join('_');
+                const eventData = {
+                    userId: user._id,
+                    mood: user.moodPrivacy ? user.currentMood : null, // Respect privacy
+                    intensity: user.moodPrivacy ? user.taskIntensity : null, // Respect privacy
+                    privacy: user.moodPrivacy,
+                    timestamp: user.lastMoodUpdate
+                };
+                console.log('📡 Emitting partner_mood_updated to room:', coupleRoom, 'data:', eventData);
+                io.to(coupleRoom).emit('partner_mood_updated', eventData);
+            }
+
             return res.json(user);
         }
         res.status(404).json({ msg: 'User not found' });

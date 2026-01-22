@@ -54,17 +54,36 @@ router.get('/daily', auth, async (req, res) => {
         const partnerIds = [user.id, user.partnerId].sort();
 
         // Check if task exists for today (simple date check)
-        const startOfDay = new Date();
-        startOfDay.setHours(0, 0, 0, 0);
+        // PRODUCTION MODE: Check if task exists since start of today
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Set to start of today
+        const cutoffTime = today;
 
         let task = await Task.findOne({
             coupleIds: { $all: partnerIds },
-            date: { $gte: startOfDay }
+            date: { $gte: cutoffTime }
         });
 
+        // TASK QUEUE LOGIC: If there's an incomplete task (one person hasn't responded), return it
+        // This ensures no task is skipped unless both partners explicitly skip it
         if (task) {
-            await task.populate('responses.userId', 'name');
-            return res.json(task);
+            const responderIds = task.responses.map(r => r.userId.toString());
+            const allResponded = partnerIds.every(id => responderIds.includes(id));
+
+            // If not everyone has responded, return the incomplete task
+            if (!allResponded) {
+                await task.populate('responses.userId', 'name');
+                return res.json(task);
+            }
+
+            // If everyone responded but feedback is incomplete, still return it
+            const feedbackCount = task.feedback.length;
+            if (feedbackCount < 2) {
+                await task.populate('responses.userId', 'name');
+                return res.json(task);
+            }
+
+            // Task is fully completed, proceed to generate new one
         }
 
         // --- AI GENERATION WITH FEEDBACK HISTORY ---
@@ -130,51 +149,153 @@ router.get('/daily', auth, async (req, res) => {
         const avgIntensity = Math.round(((user.taskIntensity || 2) + (partner?.taskIntensity || 2)) / 2);
         const intensityLabel = avgIntensity === 1 ? 'LIGHT/CASUAL' : avgIntensity === 3 ? 'DEEP/INTIMATE' : 'BALANCED';
 
-        // If no task, generate one using Gemini
-        let aiResponse = {
-            title: "Share a childhood memory",
-            description: "Take turns sharing a funny or meaningful memory from when you were under 10 years old.",
-            category: "Deep Talk"
-        };
+        // DIVERSE FALLBACK TASKS - Used when Gemini fails
+        const fallbackTasks = [
+            {
+                title: "What's one thing your partner did for you recently?",
+                description: "Share a moment when your partner made you feel loved or supported. What was it, and how did it make you feel?",
+                category: "Gratitude"
+            },
+            {
+                title: "Describe your ideal weekend together",
+                description: "Paint a picture of what your dream weekend looks like. No budget limits—what would you do?",
+                category: "Dream Sharing"
+            },
+            {
+                title: "What's a skill of yours that you think your partner admires?",
+                description: "Think about something you're good at. Why do you think your partner values it?",
+                category: "Vulnerability"
+            },
+            {
+                title: "If you could give your partner one superpower, what would it be?",
+                description: "Imagine you could give them any ability. Why that one? What would they do with it?",
+                category: "Playful Challenge"
+            },
+            {
+                title: "Share something you learned about each other recently",
+                description: "Tell your partner something new you discovered about them—it could be big or small!",
+                category: "Icebreaker"
+            },
+            {
+                title: "What does quality time look like to you?",
+                description: "How do you feel most connected to your partner? What activities or moments matter most?",
+                category: "Deep Talk"
+            },
+            {
+                title: "Describe a moment when you felt truly seen by your partner",
+                description: "When did they really understand you? What was happening, and why did it matter?",
+                category: "Intimacy"
+            },
+            {
+                title: "What's a challenge you're both facing together?",
+                description: "Talk about something you're working through as a team. How can you support each other?",
+                category: "Growth"
+            },
+            {
+                title: "If you could give your relationship one upgrade, what would it be?",
+                description: "What's one thing you'd love to improve or experience together?",
+                category: "Adventure Planning"
+            },
+            {
+                title: "What's your favorite memory together so far?",
+                description: "Think back to a moment that makes you smile. Why is it special to you?",
+                category: "Deep Talk"
+            }
+        ];
+
+        // Select random fallback or prefer based on sentiment
+        let fallbackIndex = 0;
+        if (sentimentContext.includes('STRESSED')) {
+            fallbackIndex = 0; // Gratitude - comforting
+        } else if (sentimentContext.includes('POSITIVE')) {
+            fallbackIndex = Math.floor(Math.random() * fallbackTasks.length);
+        } else {
+            fallbackIndex = Math.floor(Math.random() * fallbackTasks.length);
+        }
+
+        // If we've used recent tasks, skip those indices
+        const recentTitles = historyTasks.map(t => t.title.toLowerCase());
+        for (let i = 0; i < fallbackTasks.length; i++) {
+            if (!recentTitles.includes(fallbackTasks[i].title.toLowerCase())) {
+                fallbackIndex = i;
+                break;
+            }
+        }
+
+        let aiResponse = fallbackTasks[fallbackIndex];
 
         if (process.env.GEMINI_API_KEY) {
+            console.log("Attempting to generate task with Gemini...");
             try {
                 const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-                const prompt = `Generate a single daily 'connection prompt' for a couple. 
-                They will answer this prompt individually in the app, and then reveal their answers to each other.
-                
+                const prompt = `Generate a UNIQUE daily 'connection prompt' for a couple. They answer individually and reveal answers together.
+
                 === COUPLE PROFILE ===
                 ${preferencesContext}
 
                 === CURRENT EMOTIONAL STATE ===
                 ${moodContext}
-                Sentiment from recent responses: ${sentimentContext}
+                Sentiment Analysis: ${sentimentContext}
                 
-                === DESIRED INTENSITY: ${intensityLabel} (${avgIntensity}/3) ===
+                === TASK INTENSITY REQUIRED: ${intensityLabel} (${avgIntensity}/3) ===
 
-                === ACTIVITY HISTORY & FEEDBACK ===
+                === RECENT TASK HISTORY (AVOID THESE!) ===
                 ${historyContext}
                 
-                === INSTRUCTIONS ===
-                - Create a prompt appropriate for the ${intensityLabel} intensity level.
-                - If mood is stressed/tired, suggest lighter, comforting prompts.
-                - If mood is happy/romantic, feel free to be more playful or deep.
-                - TAILOR the prompt to their Love Languages and Interests.
-                - Analyze feedback ratings. If ratings are low for a category, try a different one.
-                - DO NOT repeat previous task titles.
-                - Response must be strictly JSON with keys: title, description (the framing/question), category.`;
+                === CRITICAL INSTRUCTIONS FOR GENERATION ===
+                
+                **EMOTIONAL INTELLIGENCE:**
+                - If sentiment is STRESSED/NEGATIVE: Generate supportive, comforting, low-pressure tasks (e.g., "What made you smile today?" or "How can I support you right now?")
+                - If sentiment is POSITIVE/HAPPY: Generate playful, celebratory, or deeper connection tasks
+                - If sentiment is NEUTRAL: Balance between fun and meaningful
+                
+                **PERSONALIZATION:**
+                - Use BOTH partners' Communication Styles in the prompt framing
+                - Incorporate their Love Languages (e.g., if Love Language is "Acts of Service", ask "What's one thing your partner did for you recently?")
+                - Reference their Interests when possible
+                
+                **ANTI-REPETITION RULES (MANDATORY):**
+                - DO NOT use ANY task title from the history above
+                - Vary task CATEGORIES: alternate between "Icebreaker", "Deep Talk", "Fun Activity", "Gratitude", "Dream Sharing", "Playful Challenge", "Vulnerability", "Adventure Planning"
+                - DO NOT repeat task themes (e.g., if recent tasks were about childhood/memories, do something else like future goals or daily habits)
+                - Each prompt should be distinctly different in TOPIC and TONE
+                
+                **QUALITY REQUIREMENTS:**
+                - Title: Compelling, specific, 5-10 words (e.g., "What's a skill you secretly admire in your partner?")
+                - Description: Clear, 1-2 sentences, conversational tone, invites authentic response
+                - Category: One of [Icebreaker, Deep Talk, Fun Activity, Gratitude, Dream Sharing, Playful Challenge, Vulnerability, Adventure Planning, Intimacy, Growth]
+                - Tone: Match the ${intensityLabel} level and current emotional sentiment
+                
+                === OUTPUT FORMAT ===
+                Response must be STRICTLY valid JSON (no markdown, no extra text):
+                {"title": "...", "description": "...", "category": "..."}`;
 
+                console.log("🤖 [Gemini] Sending prompt to Gemini API...");
                 const result = await model.generateContent(prompt);
                 const response = await result.response;
                 const text = response.text();
 
+                console.log("🤖 [Gemini] Raw response:", text.substring(0, 200));
+
                 // Simple cleanup to ensure JSON parsing (AI references often add markdown blocks)
                 const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-                aiResponse = JSON.parse(cleanText);
+
+                try {
+                    aiResponse = JSON.parse(cleanText);
+                    console.log("✅ [Gemini] Successfully generated task:", aiResponse.title);
+                } catch (jsonError) {
+                    console.error("❌ [Gemini] JSON parse error. Raw text:", cleanText);
+                    console.error("❌ [Gemini] JSON Error:", jsonError.message);
+                    throw jsonError;
+                }
             } catch (aiError) {
-                console.error("Gemini Generation Error:", aiError.message);
+                console.error("❌ [Gemini] Generation Error:", aiError.message);
+                console.error("❌ [Gemini] Full error:", aiError);
+                console.log("⚠️  [Gemini] Using fallback task:", aiResponse.title);
                 // Fallback is already set
             }
+        } else {
+            console.log("⚠️  [Gemini] GEMINI_API_KEY not configured, using fallback task:", aiResponse.title);
         }
 
         task = new Task({
@@ -185,6 +306,14 @@ router.get('/daily', auth, async (req, res) => {
         });
 
         await task.save();
+
+        // Emit new task to both partners
+        const io = req.app.get('io');
+        const coupleRoom = partnerIds.sort().join('_');
+        io.to(coupleRoom).emit('new_task_generated', {
+            task: task
+        });
+
         res.json(task);
 
     } catch (err) {
@@ -223,6 +352,16 @@ router.post('/:id/respond', auth, async (req, res) => {
         }
 
         await task.save();
+
+        // Emit real-time update to couple room
+        const io = req.app.get('io');
+        const coupleRoom = task.coupleIds.map(id => id.toString()).sort().join('_');
+        io.to(coupleRoom).emit('partner_responded', {
+            taskId: task._id,
+            responses: task.responses,
+            status: task.status
+        });
+
         res.json(task);
 
     } catch (err) {
@@ -285,6 +424,15 @@ router.post('/:id/feedback', auth, async (req, res) => {
         });
 
         await task.save();
+
+        // Emit real-time update to couple room
+        const io = req.app.get('io');
+        const coupleRoom = task.coupleIds.map(id => id.toString()).sort().join('_');
+        io.to(coupleRoom).emit('partner_feedback', {
+            taskId: task._id,
+            feedback: task.feedback
+        });
+
         res.json(task);
 
     } catch (err) {
