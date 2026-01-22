@@ -66,16 +66,19 @@ io.on('connection', (socket) => {
     });
 
     // User comes online
+    // User comes online
     socket.on('user_online', async (data) => {
         const { userId, coupleId } = data;
         onlineUsers.set(userId, socket.id);
         socket.join(`user_${userId}`);
-        socket.join(`couple_${coupleId}`);
+
+        // Store partner ID on socket for disconnect handling
+        socket.partnerId = coupleId;
 
         console.log(`User ${userId} came online`);
 
-        // Notify partner that user is online
-        socket.to(`couple_${coupleId}`).emit('partner_online', { userId });
+        // Notify partner that user is online (Target the PARTNER'S user room)
+        socket.to(`user_${coupleId}`).emit('partner_online', { userId });
 
         // Send current state to the user
         try {
@@ -152,8 +155,8 @@ io.on('connection', (socket) => {
 
             console.log(`User ${userId} updated mood to: ${mood}`);
 
-            // Broadcast mood update to partner
-            socket.to(`couple_${coupleId}`).emit('partner_mood_update', {
+            // Broadcast mood update to partner (Target Partner's Room)
+            socket.to(`user_${coupleId}`).emit('partner_mood_update', {
                 partnerId: userId,
                 mood: mood,
                 timestamp: new Date()
@@ -174,8 +177,8 @@ io.on('connection', (socket) => {
 
             console.log(`Task ${taskId} updated to status: ${status}`);
 
-            // Broadcast task update to couple
-            io.to(`couple_${coupleId}`).emit('task_status_update', {
+            // Broadcast task update to couple (Target Partner's Room)
+            io.to(`user_${coupleId}`).emit('task_status_update', {
                 task: updatedTask,
                 updatedBy: userId
             });
@@ -196,13 +199,13 @@ io.on('connection', (socket) => {
 
             console.log(`Feedback submitted for task ${taskId}`);
 
-            // Broadcast feedback update to couple
-            io.to(`couple_${coupleId}`).emit('feedback_update', {
+            // Broadcast feedback update to couple (Target Partner's Room)
+            io.to(`user_${coupleId}`).emit('feedback_update', {
                 task: updatedTask
             });
 
             // Trigger new task generation if needed
-            io.to(`couple_${coupleId}`).emit('trigger_task_generation');
+            io.to(`user_${coupleId}`).emit('trigger_task_generation');
         } catch (error) {
             console.error('Error submitting feedback:', error);
         }
@@ -234,7 +237,9 @@ io.on('connection', (socket) => {
                 console.log(`User ${userId} went offline`);
 
                 // Notify partner that user went offline
-                socket.to(`couple_${userId}`).emit('partner_offline', { userId });
+                if (socket.partnerId) {
+                    socket.to(`user_${socket.partnerId}`).emit('partner_offline', { userId });
+                }
                 break;
             }
         }

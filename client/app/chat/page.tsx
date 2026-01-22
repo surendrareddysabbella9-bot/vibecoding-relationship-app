@@ -82,7 +82,13 @@ export default function ChatPage() {
         });
 
         newSocket.on('receive_message', (data: any) => {
-            setMessages((prev) => [...prev, data]);
+            const normalizedMsg: Message = {
+                _id: data._id || Date.now().toString(),
+                text: data.text || data.message || "",
+                sender: data.sender || { _id: data.senderId, name: data.author || 'Partner' },
+                timestamp: data.timestamp || data.time || new Date().toISOString()
+            };
+            setMessages((prev) => [...prev, normalizedMsg]);
             setIsTyping(false);
             scrollToBottom();
 
