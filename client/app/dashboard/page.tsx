@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-import Chat from '@/components/Chat';
+
 
 interface User {
     _id: string;
@@ -101,7 +101,7 @@ export default function Dashboard() {
     // Preferences
     const [intensity, setIntensity] = useState(2);
     const [shareMood, setShareMood] = useState(true);
-    const [isChatOpen, setIsChatOpen] = useState(false);
+
 
     useEffect(() => {
         const token = localStorage.getItem('token');

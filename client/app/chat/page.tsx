@@ -54,8 +54,23 @@ export default function ChatPage() {
     useEffect(() => {
         if (!user || !roomId) return;
 
+        console.log('🔌 Connecting to Socket:', SOCKET_URL);
+
         // Initialize Socket
-        const newSocket = io(SOCKET_URL);
+        const newSocket = io(SOCKET_URL, {
+            transports: ['polling', 'websocket'], // Try polling first (often better for firewalls/proxies)
+            withCredentials: true,
+            reconnectionAttempts: 5
+        });
+
+        newSocket.on('connect_error', (err) => {
+            console.error('❌ Socket Connection Error:', err.message);
+        });
+
+        newSocket.on('connect', () => {
+            console.log('✅ Socket Connected:', newSocket.id);
+        });
+
         setSocket(newSocket);
 
         newSocket.emit('join_couple_room', roomId);
@@ -199,7 +214,7 @@ export default function ChatPage() {
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-white rounded-3xl shadow-xl border border-gray-100 flex-1 flex flex-col overflow-hidden h-[calc(100vh-140px)]"
+                        className="bg-white rounded-3xl shadow-xl border border-gray-100 flex-1 flex flex-col overflow-hidden h-[calc(100dvh-140px)]"
                     >
                         {/* Messages Area */}
                         <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50 scrollbar-thin scrollbar-thumb-indigo-100">
@@ -215,8 +230,8 @@ export default function ChatPage() {
                                     return (
                                         <div key={index} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
                                             <div className={`max-w-[75%] md:max-w-[60%] p-4 rounded-3xl text-sm shadow-sm relative group transition-all hover:shadow-md ${isMe
-                                                    ? "bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white rounded-br-none"
-                                                    : "bg-white text-gray-700 border border-gray-100 rounded-bl-none"
+                                                ? "bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white rounded-br-none"
+                                                : "bg-white text-gray-700 border border-gray-100 rounded-bl-none"
                                                 }`}>
                                                 {!isMe && (
                                                     <p className="text-[10px] font-bold text-indigo-500 mb-1 opacity-70 uppercase tracking-wider">
